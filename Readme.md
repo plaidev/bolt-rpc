@@ -27,7 +27,7 @@ server = new Server(io)
 # server api
 # auth -> validate -> process
 server.pre (req, res, next) ->
-  console.log 'authentification should be heare'
+  console.log 'authentification should be here'
   next()
 server.use 'add', (req, res, next) ->
   return next(new Error('requied parameter: a')) if not req.param('a')?
@@ -39,7 +39,7 @@ server.use 'add', (req, res, next) ->
 
 # setup client in (node|browser)
 io = require('socket.io-client')
-client = new Client io_for_client, {url: 'http://localhost:2000'}
+client = new Client io, {url: 'http://localhost:2000'}
 
 # client api
 client.send 'add', {a: 1, b: 2}, (err, val) ->
