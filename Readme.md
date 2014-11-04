@@ -19,9 +19,12 @@ rpc module has middleware system like express.js.
 
 # setup server
 app = require("http").createServer()
+
 io = require("socket.io")(app)
+
 app.listen 2000, () ->
   console.log 'server listen start'
+
 server = new Server(io)
 
 # server api
@@ -29,9 +32,11 @@ server = new Server(io)
 server.pre (req, res, next) ->
   console.log 'authentification should be here'
   next()
+
 server.use 'add', (req, res, next) ->
   return next(new Error('requied parameter: a')) if not req.param('a')?
   next()
+
 server.use 'add', (req, res, next) ->
   a = req.param('a')
   b = req.param('b')
