@@ -1,6 +1,6 @@
 # bolt-rpc
 
-rpc module has middleware system like express.js.
+rpc module which can be extended by middlewares like express.js.
 
 ## Installation
 
