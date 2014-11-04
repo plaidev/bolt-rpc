@@ -1,6 +1,6 @@
 # bolt-rpc
 
-a rpc module has middleware system like express.js.
+rpc module has middleware system like express.js.
 
 ## Installation
 
@@ -10,7 +10,7 @@ a rpc module has middleware system like express.js.
 
   Install with [component(1)](http://component.io):
 
-    $ component install nashibao/bolt-rpc
+    $ component install plaidev/bolt-rpc
 
 ## API
 

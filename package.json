@@ -1,7 +1,7 @@
 {
   "name": "bolt-rpc",
   "version": "0.0.3",
-  "description": "bolt rpc",
+  "description": "rpc module has middleware system like express.js",
   "main": "index.js",
   "scripts": {
     "test": "mocha --reporter spec --compilers coffee:coffee-script/register",

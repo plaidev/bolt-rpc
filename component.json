@@ -1,7 +1,7 @@
 {
   "name": "bolt-rpc",
-  "repo": "nashibao/bolt-rpc",
-  "description": "",
+  "repo": "plaidev/bolt-rpc",
+  "description": "rpc module has middleware system like express.js",
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
