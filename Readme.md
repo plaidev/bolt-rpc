@@ -17,7 +17,7 @@ rpc module which can be extended by middlewares like express.js.
 ### server example
 
 ```coffeescript
-{Server} = require('minimum-rpc')
+{Server} = require('bolt-rpc')
 
 # setup server
 app = require("http").createServer()
@@ -49,7 +49,7 @@ server.use 'add', (req, res, next) ->
 ### client example
 
 ```coffeescript
-{Client} = require('minimum-rpc')
+{Client} = require('bolt-rpc')
 
 # setup client in (node|browser)
 io = require('socket.io-client')
