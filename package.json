@@ -1,6 +1,6 @@
 {
   "name": "bolt-rpc",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "bolt rpc",
   "main": "index.js",
   "scripts": {
@@ -11,18 +11,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/nashibao/bolt-rpc"
+    "url": "git://github.com/plaidev/bolt-rpc"
   },
   "keywords": [
     "rpc",
     "websocket"
   ],
-  "author": "nashibao",
+  "author": "plaidev",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nashibao/bolt-rpc/issues"
+    "url": "https://github.com/plaidev/bolt-rpc/issues"
   },
-  "homepage": "https://github.com/nashibao/bolt-rpc",
+  "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
     "async": "^0.9.0",
     "minimum-rpc": "*"
