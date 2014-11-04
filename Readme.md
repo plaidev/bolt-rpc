@@ -1,9 +1,12 @@
-
 # bolt-rpc
 
-  
+a rpc module has middleware system like express.js.
 
 ## Installation
+
+  Install with npm
+
+    $ npm install bolt-rpc
 
   Install with [component(1)](http://component.io):
 
@@ -11,6 +14,39 @@
 
 ## API
 
+```coffeescript
+{Server, Client} = require('minimum-rpc')
+
+# setup server
+app = require("http").createServer()
+io = require("socket.io")(app)
+app.listen 2000, () ->
+  console.log 'server listen start'
+server = new Server(io)
+
+# server api
+# auth -> validate -> process
+server.pre (req, res, next) ->
+  console.log 'authentification should be heare'
+  next()
+server.use 'add', (req, res, next) ->
+  return next(new Error('requied parameter: a')) if not req.param('a')?
+  next()
+server.use 'add', (req, res, next) ->
+  a = req.param('a')
+  b = req.param('b')
+  res.send a + b
+
+# setup client in (node|browser)
+io = require('socket.io-client')
+client = new Client io_for_client, {url: 'http://localhost:2000'}
+
+# client api
+client.send 'add', {a: 1, b: 2}, (err, val) ->
+  assert not err
+  assert val is 3
+
+```
 
 
 ## License
