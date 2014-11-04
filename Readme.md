@@ -14,8 +14,10 @@ rpc module has middleware system like express.js.
 
 ## API
 
+### server example
+
 ```coffeescript
-{Server, Client} = require('minimum-rpc')
+{Server} = require('minimum-rpc')
 
 # setup server
 app = require("http").createServer()
@@ -41,6 +43,13 @@ server.use 'add', (req, res, next) ->
   a = req.param('a')
   b = req.param('b')
   res.send a + b
+
+```
+
+### client example
+
+```coffeescript
+{Client} = require('minimum-rpc')
 
 # setup client in (node|browser)
 io = require('socket.io-client')
