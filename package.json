@@ -1,0 +1,41 @@
+{
+  "name": "bolt-rpc",
+  "version": "0.0.0",
+  "description": "simple and rapid rpc module.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --reporter spec --compilers coffee:coffee-script/register",
+    "server": "nodemon -e coffee example/stack/server.coffee",
+    "client": "coffee example/stack/client.coffee",
+    "vue-server": "nodemon -e coffee example/vue/server.coffee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nashibao/bolt-rpc"
+  },
+  "keywords": [
+    "rpc",
+    "websocket"
+  ],
+  "author": "nashibao",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nashibao/bolt-rpc/issues"
+  },
+  "homepage": "https://github.com/nashibao/bolt-rpc",
+  "dependencies": {
+    "async": "^0.9.0",
+    "minimum-rpc": "*"
+  },
+  "devDependencies": {
+    "coffee-script": "^1.8.0",
+    "grunt": "^0.4.5",
+    "grunt-contrib-coffee": "^0.12.0",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-shell": "^1.1.1",
+    "lodash": "^2.4.1",
+    "sinon": "^1.11.1",
+    "socket.io": "^1.2.0",
+    "socket.io-client": "^1.2.0"
+  }
+}

@@ -1,0 +1,51 @@
+
+<body>
+  <div id="content">
+    <h1>find</h1>
+    <div v-repeat="lists"><div>{{name}}</div><button v-on="click: remove(name)">remove</button></div>
+    <h1>create</h1>
+    <input type="text" placeholder="name" v-model="name" v-on="keyup:create | key enter"/>
+    <button v-on="click: create">send</button>
+  </div>
+</body>
+
+<script src="http://localhost:2000/socket.io/socket.io.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/vue/0.10.6/vue.js"></script>
+<script src="../../build/build.js"></script>
+
+<!-- api -->
+<script type="text/javascript">
+  var Client = require('bolt-rpc/lib/client');
+  var socket = io.connect('http://localhost:2000/__')
+  var todo = new Client(socket, {sub_name_space: 'todo'});
+</script>
+
+<!-- vuejs -->
+<script type="text/javascript">
+
+  var vm = new Vue({
+    el: '#content',
+    data: {
+        lists: [],
+        name: ""
+    },
+    methods: {
+      remove: function(name){
+        todo.send('remove', {name: name}, function(err){
+        });
+      },
+      create: function(){
+        self = this;
+        todo.send('create', {name: self.name}, function(err, val){
+          self.name = "";
+        });
+      }
+    }
+  });
+
+  // tracking
+  todo.track('find', {}, function(err, vals){
+    vm.lists = vals;
+  });
+
+</script>

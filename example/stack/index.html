@@ -1,0 +1,14 @@
+<script src="http://localhost:2000/socket.io/socket.io.js"></script>
+<script src="../../build/build.js"></script>
+<!-- <script src="../front.js"></script> -->
+<script>
+  var Client = require('bolt-rpc/lib/client');
+  // var Client = bolt.Client;
+  var client = new Client(io, {url: 'http://localhost:2000'});
+  client.send('add', {a:1, b:2}, function(err, val){
+    if(err){
+      return console.log('Error:', err);
+    }
+    console.log('1 + 2 = ', val);
+  });
+</script>
