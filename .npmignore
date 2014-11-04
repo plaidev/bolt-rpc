@@ -1,1 +1,8 @@
 src
+build
+example
+test
+component.json
+Gruntfile.js
+Makefile
+Readme.md
