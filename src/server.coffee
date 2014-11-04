@@ -7,7 +7,7 @@ FORCE_STOP = "FORCE_STOP"
 
 # mock request object like express
 class Request
-  constructor: (@data) ->
+  constructor: ({@data, @socket}) ->
   param: (field) -> return @data?[field]
   body: (field) -> return @data?[field]
 
@@ -69,9 +69,9 @@ class StackServer
 
     _methods = @pres.concat(@methods[path])
 
-    _m = (data, next) ->
+    _m = (data, next, socket) ->
 
-      req = new Request(data)
+      req = new Request({data, socket})
 
       res = new Response()
 
