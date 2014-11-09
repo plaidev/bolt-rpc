@@ -21,7 +21,7 @@ describe "Basic RPC Function", ->
       _cb()
 
     validate = sinon.spy (req, {_cb}) ->
-      return next(new Error('requied parameter: a')) if not req.param('a')?
+      return next(new Error('requied parameter: a')) if not req.data.a?
       _cb()
 
     # auth
@@ -33,8 +33,8 @@ describe "Basic RPC Function", ->
     # procedure
     server.use 'add'
       , (req, res, next) ->
-        a = req.param('a')
-        b = req.param('b')
+        a = req.data.a
+        b = req.data.b
         res.send a + b
 
     client.send 'add', {a: 1, b: 2}, (err, val) ->

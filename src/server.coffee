@@ -5,12 +5,6 @@ async = require('async')
 # for stopping in async flow
 FORCE_STOP = "FORCE_STOP"
 
-# mock request object like express
-class Request
-  constructor: ({@data, @socket}) ->
-  param: (field) -> return @data?[field]
-  body: (field) -> return @data?[field]
-
 # mock response object like express
 class Response
   constructor: (@_cb) ->
@@ -71,7 +65,9 @@ class StackServer
 
     _m = (data, next, socket) ->
 
-      req = new Request({data, socket})
+      req = socket.request
+
+      req.data = data
 
       res = new Response()
 
