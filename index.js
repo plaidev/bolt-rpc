@@ -1,4 +1,4 @@
 module.exports = {
-  Server: require('./lib/server'),
-  Client: require('./lib/client')
+  Server: require('./js/server'),
+  Client: require('./js/client')
 }

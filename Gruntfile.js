@@ -7,7 +7,7 @@ module.exports = function(grunt) {
           expand: true,
           cwd: 'src',
           src: ['**/*.coffee'],
-          dest: 'lib',
+          dest: 'js',
           ext: '.js'
         }
     },

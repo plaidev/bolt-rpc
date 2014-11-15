@@ -12,7 +12,7 @@
   "main": "index.js",
   "scripts": [
     "index.js",
-    "lib/server.js",
-    "lib/client.js"
+    "js/server.js",
+    "js/client.js"
   ]
 }

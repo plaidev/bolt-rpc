@@ -1,6 +1,6 @@
 {
   "name": "bolt-rpc",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "rpc module has middleware system like express.js",
   "main": "index.js",
   "scripts": {
