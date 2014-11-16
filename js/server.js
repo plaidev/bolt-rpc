@@ -99,7 +99,7 @@
           if (options.track) {
             track = true;
           }
-          return method(req, res, cb);
+          return method(req, res, cb, socket);
         }, function(err, val) {
           if (err === FORCE_STOP) {
             err = null;

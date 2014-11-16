@@ -78,7 +78,7 @@ class StackServer
       async.eachSeries _methods, ({method, options}, cb) ->
         res._cb = cb
         track = true if options.track
-        method(req, res, cb)
+        method(req, res, cb, socket)
       , (err, val) ->
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
