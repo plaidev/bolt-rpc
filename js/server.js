@@ -28,14 +28,32 @@
 
   StackServer = (function() {
     function StackServer(io, options) {
+      this.io = io != null ? io : void 0;
+      if (options == null) {
+        options = {};
+      }
+      if (this.io != null) {
+        this.server = new Server(this.io, {}, options);
+      }
+      this.pres = [];
+      this.methods = {};
+    }
+
+    StackServer.prototype.setupServer = function(io, options) {
+      var methods, path, _ref, _results;
       this.io = io;
       if (options == null) {
         options = {};
       }
-      this.server = new Server(this.io, {}, options);
-      this.pres = [];
-      this.methods = {};
-    }
+      this.server = new Server(this.io, options);
+      _ref = this.methods;
+      _results = [];
+      for (path in _ref) {
+        methods = _ref[path];
+        _results.push(this._update(path));
+      }
+      return _results;
+    };
 
     StackServer.prototype.pre = function() {
       var method, methods, options, _i, _len, _results;
@@ -96,6 +114,9 @@
 
     StackServer.prototype._update = function(path) {
       var self, _m, _methods;
+      if (this.server == null) {
+        return;
+      }
       self = this;
       _methods = this.pres.concat(this.methods[path]);
       _m = function(data, next, socket) {
