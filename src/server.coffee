@@ -38,6 +38,14 @@ class StackServer
 
     @server.channel.emit @server.sub_name_space + '_track', {data}
 
+  trackBy: (methods, data) ->
+
+    methods = [] if not methods?
+
+    methods = [methods] if not Array.isArray(methods)
+
+    @server.channel.emit @server.sub_name_space + '_track', {methods: methods, data: data}
+
   use: () ->
 
     path = arguments[0]
