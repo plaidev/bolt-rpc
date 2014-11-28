@@ -28,7 +28,7 @@ class StackServer
 
   setupServer: (@io, options={}) ->
 
-    @server = new Server(@io, options)
+    @server = new Server(@io, {}, options)
 
     for path, methods of @methods
 
