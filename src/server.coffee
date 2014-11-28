@@ -18,13 +18,21 @@ class Response
 # server which can handle middlewares like express
 class StackServer
 
-  constructor: (@io, options={}) ->
+  constructor: (@io=undefined, options={}) ->
 
-    @server = new Server(@io, {}, options)
+    @server = new Server(@io, {}, options) if @io?
 
     @pres = []
 
     @methods = {}
+
+  setupServer: (@io, options={}) ->
+
+    @server = new Server(@io, options)
+
+    for path, methods of @methods
+
+      @_update(path)
 
   pre: () ->
 
@@ -37,6 +45,14 @@ class StackServer
   track: (data) ->
 
     @server.channel.emit @server.sub_name_space + '_track', {data}
+
+  trackBy: (methods, data) ->
+
+    methods = [] if not methods?
+
+    methods = [methods] if not Array.isArray(methods)
+
+    @server.channel.emit @server.sub_name_space + '_track', {methods: methods, data: data}
 
   use: () ->
 
@@ -58,6 +74,8 @@ class StackServer
     @_update(path)
 
   _update: (path) ->
+
+    return if not @server?
 
     self = @
 
