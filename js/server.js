@@ -45,7 +45,7 @@
       if (options == null) {
         options = {};
       }
-      this.server = new Server(this.io, options);
+      this.server = new Server(this.io, {}, options);
       _ref = this.methods;
       _results = [];
       for (path in _ref) {
