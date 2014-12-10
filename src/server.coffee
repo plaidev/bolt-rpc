@@ -26,6 +26,20 @@ class StackServer
 
     @methods = {}
 
+  extend: (baseServer) ->
+
+    return @ if not baseServer?
+
+    @pres = baseServer.pres.concat @pres
+
+    methods = {}
+
+    methods[name] = method for name, method of baseServer.methods
+
+    methods[name] = method for name, method of @methods
+
+    @methods = methods
+
   setupServer: (@io, options={}) ->
 
     @server = new Server(@io, {}, options)
