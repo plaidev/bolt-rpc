@@ -430,7 +430,7 @@ th {
 body {
   font-size: 15px;
   line-height: 1.5;
-  background: #fafafa url(../images/body-bg.jpg) 0 0 repeat;
+  background: #ffffff;
   font-family: 'Helvetica Neue', Helvetica, Arial, serif;
   font-weight: 400;
   color: #666;
@@ -448,11 +448,15 @@ a:hover {
 }
 
 header {
-  padding-top: 40px;
-  padding-bottom: 40px;
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-  background: #2e7bcf url(../images/header-bg.jpg) 0 0 repeat-x;
-  border-bottom: solid 1px #275da1;
+  padding-top: 50px;
+  padding-bottom: 50px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, serif;
+  background: #ffffff;
+}
+
+header .logo-plaid {
+  width: 112px;
+  display: block;
 }
 
 header h1 {
@@ -461,20 +465,24 @@ header h1 {
   font-weight: normal;
   color: #fff;
   line-height: 1;
-  margin-top: 0;
-  margin-bottom: 0.2em;
-  width: 540px;
+  margin-top: 0.5em;
+  margin-bottom: 0.45em;
+  width: 242px;
 }
 
 header h2 {
-  font-size: 26px;
-  color: #9ddcff;
+  font-size: 15px;
+  color: #666666;
   font-weight: normal;
   line-height: 1.3;
-  width: 540px;
+  width: 300px;
   letter-spacing: 0;
   margin-top: 0;
   margin-bottom: 0;
+}
+
+header img {
+  width: 100%;
 }
 
 .inner {
@@ -485,7 +493,7 @@ header h2 {
 
 #content-wrapper {
   border-top: solid 1px #fff;
-  padding-top: 30px;
+  padding-top: 10px;
 }
 
 #main-content {
@@ -499,16 +507,17 @@ header h2 {
 
 aside#sidebar {
   width: 200px;
+  padding-top: 30px;
   padding-left: 20px;
   min-height: 504px;
   float: right;
-  background: transparent url(../images/sidebar-bg.jpg) 0 0 no-repeat;
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 aside#sidebar p.repo-owner,
 aside#sidebar p.repo-owner a {
+  margin-top: 50px;
   font-weight: bold;
 }
 
@@ -517,32 +526,42 @@ aside#sidebar p.repo-owner a {
 }
 
 a.button {
-  width: 134px;
+  width: 196px;
   height: 58px;
   line-height: 1.2;
-  font-size: 23px;
+  font-size: 15px;
   color: #fff;
-  padding-left: 68px;
-  padding-top: 22px;
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, serif;
+  text-align: center;
 }
 a.button small {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
 }
 header a.button {
   position: absolute;
   right: 0;
-  top: 0;
-  background: transparent url(../images/github-button.png) 0 0 no-repeat;
+  top: 75px;
+  height: auto;
+  padding: 15px 0;
+  border: 2px solid #2879D0;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #2879D0;
 }
 aside a.button {
-  width: 138px;
-  padding-left: 64px;
+  width: 200px;
+  height: auto;
+  padding: 13px 0;
   display: block;
-  background: transparent url(../images/download-button.png) 0 0 no-repeat;
-  margin-bottom: 20px;
-  font-size: 21px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  background: #2879D0;
+  margin-bottom: 30px;
+  font-size: 15px;
 }
 
 code, pre {
@@ -559,15 +578,16 @@ code {
 }
 
 pre {
+  margin-top: 5px;
   padding: 20px;
-  background: #fff;
+  background: #f5f5f5;
   text-shadow: none;
   overflow: auto;
-  border: solid 1px #f2f2f2;
+  border: solid 1px #f5f5f5;
 }
 pre code {
-  color: #2879d0;
-  background-color: #fff;
+  color: #2879D0;
+  background-color: #f5f5f5;
   border: none;
   padding: 0;
 }
@@ -608,11 +628,10 @@ form {
 
 }
 
-
 /* GENERAL ELEMENT TYPE STYLES */
 
 #main-content h1 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
   font-size: 2.8em;
   font-weight: normal;
   letter-spacing: -1px;
@@ -622,91 +641,53 @@ form {
   text-indent: 6px;
 }
 
-#main-content h1:before {
-  content: "/";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -0.9em;
-}
-
 #main-content h2 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #474747;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-size: 36px;
+  font-weight: normal;
+  margin-top: 45px;
+  margin-bottom: 0;
+  color: #333333;
   text-indent: 4px;
-}
-#main-content h2:before {
-  content: "//";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -1.5em;
 }
 
 #main-content h3 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
-  font-size: 18px;
-  font-weight: bold;
-  margin-top: 24px;
-  margin-bottom: 8px;
-  color: #474747;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-size: 24px;
+  font-weight: normal;
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #333333;
   text-indent: 3px;
-}
-
-#main-content h3:before {
-  content: "///";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -2em;
 }
 
 #main-content h4 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
   font-size: 15px;
-  font-weight: bold;
+  font-weight: normal;
   margin-bottom: 8px;
-  color: #474747;
+  color: #333333;
   text-indent: 3px;
-}
-
-h4:before {
-  content: "////";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -2.8em;
 }
 
 #main-content h5 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
   font-size: 14px;
   margin-bottom: 8px;
-  color: #474747;
+  color: #333333;
   text-indent: 3px;
-}
-h5:before {
-  content: "/////";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -3.2em;
 }
 
 #main-content h6 {
-  font-family: 'Architects Daughter', 'Helvetica Neue', Helvetica, Arial, serif;
+  font-family: 'Futura-CondensedMedium', 'Helvetica Neue', Helvetica, Arial, serif;
   font-size: .8em;
   margin-bottom: 8px;
-  color: #474747;
+  color: #333333;
   text-indent: 3px;
-}
-h6:before {
-  content: "//////";
-  color: #9ddcff;
-  padding-right: 0.3em;
-  margin-left: -3.7em;
 }
 
 p {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 a {
@@ -824,21 +805,21 @@ footer a:hover {
     font-size: 24px;
   }
   header a.button {
+    top: 20px;
     background-image: none;
     width: auto;
     height: auto;
-    display: inline-block;
+    display: block;
     margin-top: 15px;
-    padding: 5px 10px;
+    padding: 10px;
     position: relative;
     text-align: center;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1;
-    background-color: #9ddcff;
     color: #2879d0;
-    -moz-border-radius: 5px;
-    -webkit-border-radius: 5px;
-    border-radius: 5px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
   }
   header a.button small {
     font-size: 13px;
