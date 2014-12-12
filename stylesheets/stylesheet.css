@@ -454,9 +454,14 @@ header {
   background: #ffffff;
 }
 
-header .logo-plaid {
+.logo-plaid {
   width: 112px;
   display: block;
+  padding: 15px 0;
+}
+
+.logo-plaid img {
+  width: 100%;
 }
 
 header h1 {
@@ -517,7 +522,7 @@ aside#sidebar {
 
 aside#sidebar p.repo-owner,
 aside#sidebar p.repo-owner a {
-  margin-top: 50px;
+  margin-top: 15px;
   font-weight: bold;
 }
 
