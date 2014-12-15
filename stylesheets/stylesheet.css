@@ -498,7 +498,7 @@ header img {
 
 #content-wrapper {
   border-top: solid 1px #fff;
-  padding: 10px 0;
+  padding: 10px 0 100px;
 }
 
 #main-content {
