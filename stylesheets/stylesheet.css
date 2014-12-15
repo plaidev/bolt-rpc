@@ -546,7 +546,7 @@ a.button small {
 header a.button {
   position: absolute;
   right: 0;
-  top: 75px;
+  top: 20px;
   height: auto;
   padding: 15px 0;
   border: 2px solid #2879D0;
