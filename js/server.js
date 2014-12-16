@@ -39,6 +39,26 @@
       this.methods = {};
     }
 
+    StackServer.prototype.extend = function(baseServer) {
+      var method, methods, name, _ref, _ref1;
+      if (baseServer == null) {
+        return this;
+      }
+      this.pres = baseServer.pres.concat(this.pres);
+      methods = {};
+      _ref = baseServer.methods;
+      for (name in _ref) {
+        method = _ref[name];
+        methods[name] = method;
+      }
+      _ref1 = this.methods;
+      for (name in _ref1) {
+        method = _ref1[name];
+        methods[name] = method;
+      }
+      return this.methods = methods;
+    };
+
     StackServer.prototype.setupServer = function(io, options) {
       var methods, path, _ref, _results;
       this.io = io;
