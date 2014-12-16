@@ -68,6 +68,4 @@ class TrackClient extends Client
 
     return cursor
 
-
-
 module.exports = TrackClient
