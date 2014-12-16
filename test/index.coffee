@@ -50,7 +50,7 @@ describe "Promise API", ->
 
   it "end", (done) ->
 
-    cursor = client.get 'add', {a: 1, b: 2}
+    cursor = client.track 'add', {a: 1, b: 2}
     assert cursor.val is null
     cursor.on 'end', (val) ->
       assert val is 3
@@ -59,7 +59,7 @@ describe "Promise API", ->
 
   it "error", (done) ->
 
-    cursor = client.get 'add', {b: 2}
+    cursor = client.track 'add', {b: 2}
     cursor.on 'error', (err) ->
       assert err
       assert cursor.err is err
@@ -67,8 +67,31 @@ describe "Promise API", ->
 
   it "chainable", (done) ->
 
-    cursor = client.get 'add', {a: 1, b: 2}
+    cursor = client.track 'add', {a: 1, b: 2}
     cursor.error((err) ->).end (val) ->
       assert val is 3
       assert cursor.val is val
+      done()
+
+  it "update", (done) ->
+    updated = false
+    cursor = client.track 'add', {a: 1, b: 2}
+    cursor.end((val) ->
+      if not updated
+        cursor.update({a: 2, b: 3})
+        updated = true
+        return
+      assert cursor.val is 5
+      done()
+    )
+
+  it "map", (done) ->
+
+    cursor = client.track 'add', {a: 1, b: 2}
+    cursor.map (val) ->
+      return val * 2
+    cursor.map (val) ->
+      return val - 1
+    cursor.end (val) ->
+      assert val is 5
       done()

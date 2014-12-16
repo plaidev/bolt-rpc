@@ -12,7 +12,7 @@ client.send 'add', {a: 1, b: 2}, (err, val) ->
   console.log '1 + 2 = ', val
   assert(val is 3)
 
-cursor = client.get 'add', {a: 1, b: 2}
+cursor = client.track 'add', {a: 1, b: 2}
 
 cursor.error((err) ->
   console.log err if err

@@ -14,12 +14,14 @@
   TrackCursor = (function(_super) {
     __extends(TrackCursor, _super);
 
-    function TrackCursor(method, data, cb) {
+    function TrackCursor(method, data, cb, client) {
       this.method = method;
       this.data = data;
       this.cb = cb;
+      this.client = client;
       this.val = null;
       this.err = null;
+      this.mdls = [];
     }
 
     TrackCursor.prototype.error = function(cb) {
@@ -29,6 +31,38 @@
 
     TrackCursor.prototype.end = function(cb) {
       this.on('end', cb);
+      return this;
+    };
+
+    TrackCursor.prototype.update = function(_data) {
+      if (_data !== void 0) {
+        this.data = _data;
+      }
+      this.client.send(this.method, this.data, (function(_this) {
+        return function(err, val) {
+          var mdl, _i, _len, _ref;
+          _this.err = err || null;
+          _this.val = val || null;
+          if (err) {
+            _this.emit('error', err);
+          } else {
+            _ref = _this.mdls;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              mdl = _ref[_i];
+              val = mdl(val);
+            }
+            _this.emit('end', val);
+          }
+          if (_this.cb) {
+            return _this.cb(err, val);
+          }
+        };
+      })(this));
+      return this;
+    };
+
+    TrackCursor.prototype.map = function(mdl) {
+      this.mdls.push(mdl);
       return this;
     };
 
@@ -49,7 +83,7 @@
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             cursor = _ref[_i];
-            _results.push(_this.send(cursor.method, cursor.data, cursor.cb));
+            _results.push(cursor.update());
           }
           return _results;
         };
@@ -58,26 +92,9 @@
 
     TrackClient.prototype.track = function(method, data, cb) {
       var cursor;
-      cursor = new TrackCursor(method, data, cb);
+      cursor = new TrackCursor(method, data, cb, this);
       this._cursors.push(cursor);
-      this.send(method, data, cb);
-      return cursor;
-    };
-
-    TrackClient.prototype.get = function(method, data) {
-      var cb, cursor;
-      cb = function(err, val) {
-        cursor.err = err || null;
-        cursor.val = val || null;
-        if (err) {
-          return cursor.emit('error', err);
-        } else {
-          return cursor.emit('end', val);
-        }
-      };
-      cursor = new TrackCursor(method, data, cb);
-      this._cursors.push(cursor);
-      this.send(method, data, cb);
+      cursor.update();
       return cursor;
     };
 

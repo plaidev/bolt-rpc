@@ -27,7 +27,7 @@
     el: '#content',
     data: {
         lists: [],
-        lists_cursor: todo.get('find', {}),
+        lists_cursor: todo.track('find', {}),
         name: ""
     },
     methods: {
@@ -44,9 +44,9 @@
     }
   });
 
-  // // tracking
-  // todo.track('find', {}, function(err, vals){
-  //   vm.lists = vals;
-  // });
+  // tracking
+  todo.track('find', {}, function(err, vals){
+    vm.lists = vals;
+  });
 
 </script>
