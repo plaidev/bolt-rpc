@@ -1,20 +1,40 @@
 (function() {
-  var Client, TrackClient, TrackCursor,
+  var Client, Emitter, TrackClient, TrackCursor,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
+  try {
+    Emitter = require('emitter');
+  } catch (_error) {
+    Emitter = require('events').EventEmitter;
+  }
+
   Client = require('minimum-rpc').Client;
 
-  TrackCursor = (function() {
+  TrackCursor = (function(_super) {
+    __extends(TrackCursor, _super);
+
     function TrackCursor(method, data, cb) {
       this.method = method;
       this.data = data;
       this.cb = cb;
+      this.val = null;
+      this.err = null;
     }
+
+    TrackCursor.prototype.error = function(cb) {
+      this.on('error', cb);
+      return this;
+    };
+
+    TrackCursor.prototype.end = function(cb) {
+      this.on('end', cb);
+      return this;
+    };
 
     return TrackCursor;
 
-  })();
+  })(Emitter);
 
   TrackClient = (function(_super) {
     __extends(TrackClient, _super);
@@ -41,6 +61,21 @@
       cursor = new TrackCursor(method, data, cb);
       this._cursors.push(cursor);
       this.send(method, data, cb);
+      return cursor;
+    };
+
+    TrackClient.prototype.get = function(method, data) {
+      var cursor;
+      cursor = new TrackCursor(method, data);
+      this.send(method, data, function(err, val) {
+        cursor.err = err || null;
+        cursor.val = val || null;
+        if (err) {
+          return cursor.emit('error', err);
+        } else {
+          return cursor.emit('end', val);
+        }
+      });
       return cursor;
     };
 

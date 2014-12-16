@@ -11,4 +11,10 @@
     }
     console.log('1 + 2 = ', val);
   });
+  var cursor = client.get('add', {a:1, b:2});
+  cursor.error(function(err){
+    console.log('Error:', err);
+  }).end(function(val){
+    console.log('1 + 2 = ', val);
+  });
 </script>
