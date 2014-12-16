@@ -98,6 +98,19 @@
       return cursor;
     };
 
+    TrackClient.prototype.get = function(method, data, cb) {
+      var cursor, res;
+      res = {
+        err: null,
+        val: null
+      };
+      cursor = this.track(method, data, function(err, val) {
+        res.err = err;
+        return res.val = val;
+      });
+      return res;
+    };
+
     return TrackClient;
 
   })(Client);

@@ -68,4 +68,18 @@ class TrackClient extends Client
 
     return cursor
 
+  # track api which return cursor obj.
+  get: (method, data, cb) ->
+
+    res = {
+      err: null
+      val: null
+    }
+
+    cursor = @track method, data, (err, val) ->
+      res.err = err
+      res.val = val
+
+    return res
+
 module.exports = TrackClient
