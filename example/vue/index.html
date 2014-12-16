@@ -2,7 +2,7 @@
 <body>
   <div id="content">
     <h1>find</h1>
-    <div v-repeat="lists"><div>{{name}}</div><button v-on="click: remove(name)">remove</button></div>
+    <div v-repeat="lists_cursor.val"><div>{{name}}</div><button v-on="click: remove(name)">remove</button></div>
     <h1>create</h1>
     <input type="text" placeholder="name" v-model="name" v-on="keyup:create | key enter"/>
     <button v-on="click: create">send</button>
@@ -27,6 +27,7 @@
     el: '#content',
     data: {
         lists: [],
+        lists_cursor: todo.get('find', {}),
         name: ""
     },
     methods: {
@@ -43,9 +44,9 @@
     }
   });
 
-  // tracking
-  todo.track('find', {}, function(err, vals){
-    vm.lists = vals;
-  });
+  // // tracking
+  // todo.track('find', {}, function(err, vals){
+  //   vm.lists = vals;
+  // });
 
 </script>

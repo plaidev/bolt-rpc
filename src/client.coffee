@@ -38,15 +38,19 @@ class TrackClient extends Client
 
   get: (method, data) ->
 
-    cursor = new TrackCursor(method, data)
-
-    @send method, data, (err, val) ->
+    cb = (err, val) ->
       cursor.err = err or null
       cursor.val = val or null
       if err
         cursor.emit 'error', err
       else
         cursor.emit 'end', val
+
+    cursor = new TrackCursor(method, data, cb)
+
+    @_cursors.push(cursor)
+
+    @send method, data, cb
 
     return cursor
 

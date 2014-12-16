@@ -65,9 +65,8 @@
     };
 
     TrackClient.prototype.get = function(method, data) {
-      var cursor;
-      cursor = new TrackCursor(method, data);
-      this.send(method, data, function(err, val) {
+      var cb, cursor;
+      cb = function(err, val) {
         cursor.err = err || null;
         cursor.val = val || null;
         if (err) {
@@ -75,7 +74,10 @@
         } else {
           return cursor.emit('end', val);
         }
-      });
+      };
+      cursor = new TrackCursor(method, data, cb);
+      this._cursors.push(cursor);
+      this.send(method, data, cb);
       return cursor;
     };
 
