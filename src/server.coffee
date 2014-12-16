@@ -1,6 +1,7 @@
 
 async = require('async')
 {Server} = require('minimum-rpc')
+copy = require('shallow-copy')
 
 # for stopping in async flow
 FORCE_STOP = "FORCE_STOP"
@@ -89,7 +90,7 @@ class StackServer
 
     _m = (data, next, socket) ->
 
-      req = socket.request
+      req = copy(socket.request)
 
       req.data = data
 

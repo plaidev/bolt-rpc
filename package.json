@@ -25,7 +25,8 @@
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
     "async": "^0.9.0",
-    "minimum-rpc": "*"
+    "minimum-rpc": "*",
+    "shallow-copy": "0.0.1"
   },
   "devDependencies": {
     "coffee-script": "^1.8.0",

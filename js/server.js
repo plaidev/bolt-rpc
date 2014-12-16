@@ -1,9 +1,11 @@
 (function() {
-  var FORCE_STOP, Response, Server, StackServer, async;
+  var FORCE_STOP, Response, Server, StackServer, async, copy;
 
   async = require('async');
 
   Server = require('minimum-rpc').Server;
+
+  copy = require('shallow-copy');
 
   FORCE_STOP = "FORCE_STOP";
 
@@ -128,7 +130,7 @@
       _methods = this.pres.concat(this.methods[path]);
       _m = function(data, next, socket) {
         var req, res, series, track;
-        req = socket.request;
+        req = copy(socket.request);
         req.data = data;
         res = new Response();
         series = [];
