@@ -19,13 +19,35 @@ class Response
 # server which can handle middlewares like express
 class StackServer
 
-  constructor: (@io, options={}) ->
+  constructor: (@io=undefined, options={}) ->
 
-    @server = new Server(@io, {}, options)
+    @server = new Server(@io, {}, options) if @io?
 
     @pres = []
 
     @methods = {}
+
+  extend: (baseServer) ->
+
+    return @ if not baseServer?
+
+    @pres = baseServer.pres.concat @pres
+
+    methods = {}
+
+    methods[name] = method for name, method of baseServer.methods
+
+    methods[name] = method for name, method of @methods
+
+    @methods = methods
+
+  setupServer: (@io, options={}) ->
+
+    @server = new Server(@io, {}, options)
+
+    for path, methods of @methods
+
+      @_update(path)
 
   pre: () ->
 
@@ -59,6 +81,8 @@ class StackServer
     @_update(path)
 
   _update: (path) ->
+
+    return if not @server?
 
     self = @
 
