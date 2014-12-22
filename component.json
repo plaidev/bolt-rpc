@@ -2,7 +2,7 @@
   "name": "bolt-rpc",
   "repo": "plaidev/bolt-rpc",
   "description": "rpc module has middleware system like express.js",
-  "version": "0.0.1",
+  "version": "0.0.8",
   "keywords": [],
   "dependencies": {
     "component/emitter": "1.1.3",
