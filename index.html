@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github_color.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Bolt-rpc by plaidev</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1><img src="images/bolt-rpc.svg" id="page-name" alt="BOLT RPC"></h1>
+        <h2>rpc module which can be extended by middlewares like express.js</h2>
+        <a href="https://github.com/plaidev/bolt-rpc" class="button">View on GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+<a id="bolt-rpc" class="anchor" href="#bolt-rpc" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Install with npm</p>
+
+<pre><code>$ npm install bolt-rpc
+</code></pre>
+
+<p>Install with <a href="http://component.io">component(1)</a>:</p>
+
+<pre><code>$ component install plaidev/bolt-rpc
+</code></pre>
+
+<h2>
+<a id="api" class="anchor" href="#api" aria-hidden="true"><span class="octicon octicon-link"></span></a>API</h2>
+
+<h3>
+<a id="server-example" class="anchor" href="#server-example" aria-hidden="true"><span class="octicon octicon-link"></span></a>server example</h3>
+
+<div class="highlight highlight-coffeescript"><pre><span class="pl-k">{</span><span class="pl-v"><span class="pl-v">Server</span></span><span class="pl-k">} =</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>bolt-rpc<span class="pl-pds">'</span></span>)
+
+<span class="pl-c"># setup server</span>
+<span class="pl-v"><span class="pl-v">app <span class="pl-k">=</span></span></span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">"</span>http<span class="pl-pds">"</span></span>).createServer()
+
+<span class="pl-v"><span class="pl-v">io <span class="pl-k">=</span></span></span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">"</span>socket.io<span class="pl-pds">"</span></span>)(app)
+
+app.listen <span class="pl-c1">2000</span>, <span class="pl-vpf">()</span> <span class="pl-st">-&gt;</span>
+  <span class="pl-en">console</span>.<span class="pl-s3">log</span> <span class="pl-s1"><span class="pl-pds">'</span>server listen start<span class="pl-pds">'</span></span>
+
+<span class="pl-v"><span class="pl-v">server <span class="pl-k">=</span></span></span> <span class="pl-k">new</span> <span class="pl-en">Server</span>(io)
+
+<span class="pl-c"># server api</span>
+<span class="pl-c"># auth -&gt; validate -&gt; process</span>
+server.pre <span class="pl-vpf">(req, res, next)</span> <span class="pl-st">-&gt;</span>
+  <span class="pl-en">console</span>.<span class="pl-s3">log</span> <span class="pl-s1"><span class="pl-pds">'</span>authentification should be here<span class="pl-pds">'</span></span>
+  next()
+
+server.use <span class="pl-s1"><span class="pl-pds">'</span>add<span class="pl-pds">'</span></span>, <span class="pl-vpf">(req, res, next)</span> <span class="pl-st">-&gt;</span>
+  <span class="pl-k">return</span> next(<span class="pl-k">new</span> <span class="pl-en">Error</span>(<span class="pl-s1"><span class="pl-pds">'</span>requied parameter: a<span class="pl-pds">'</span></span>)) <span class="pl-k">if</span> <span class="pl-k">not</span> req.param(<span class="pl-s1"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>)<span class="pl-k">?</span>
+  next()
+
+server.use <span class="pl-s1"><span class="pl-pds">'</span>add<span class="pl-pds">'</span></span>, <span class="pl-vpf">(req, res, next)</span> <span class="pl-st">-&gt;</span>
+  <span class="pl-v"><span class="pl-v">a <span class="pl-k">=</span></span></span> req.param(<span class="pl-s1"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>)
+  <span class="pl-v"><span class="pl-v">b <span class="pl-k">=</span></span></span> req.param(<span class="pl-s1"><span class="pl-pds">'</span>b<span class="pl-pds">'</span></span>)
+  res.send a <span class="pl-k">+</span> b
+</pre></div>
+
+<h3>
+<a id="client-example" class="anchor" href="#client-example" aria-hidden="true"><span class="octicon octicon-link"></span></a>client example</h3>
+
+<div class="highlight highlight-coffeescript"><pre><span class="pl-k">{</span><span class="pl-v"><span class="pl-v">Client</span></span><span class="pl-k">} =</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>bolt-rpc<span class="pl-pds">'</span></span>)
+
+<span class="pl-c"># setup client in (node|browser)</span>
+<span class="pl-v"><span class="pl-v">io <span class="pl-k">=</span></span></span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>socket.io-client<span class="pl-pds">'</span></span>)
+<span class="pl-v"><span class="pl-v">client <span class="pl-k">=</span></span></span> <span class="pl-k">new</span> <span class="pl-en">Client</span> io, {<span class="pl-v"><span class="pl-v">url:</span></span> <span class="pl-s1"><span class="pl-pds">'</span>http://localhost:2000<span class="pl-pds">'</span></span>}
+
+<span class="pl-c"># client api</span>
+client.send <span class="pl-s1"><span class="pl-pds">'</span>add<span class="pl-pds">'</span></span>, {<span class="pl-v"><span class="pl-v">a:</span></span> <span class="pl-c1">1</span>, <span class="pl-v"><span class="pl-v">b:</span></span> <span class="pl-c1">2</span>}, <span class="pl-vpf">(err, val)</span> <span class="pl-st">-&gt;</span>
+  assert <span class="pl-k">not</span> err
+  assert val <span class="pl-k">is</span> <span class="pl-c1">3</span>
+</pre></div>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>The MIT License (MIT)</p>
+
+<p>Copyright (c) 2014 </p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/plaidev/bolt-rpc/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/plaidev/bolt-rpc/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p><small>Powered by</small><br>
+            <a class="logo-plaid" href="https://github.com/plaidev"><img src="images/plaid.svg" id="logo" alt="PLAID"></a></p>
+
+          <p class="repo-owner"><a href="https://github.com/plaidev/bolt-rpc"></a> is maintained by <a href="https://github.com/plaidev">plaidev</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
