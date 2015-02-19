@@ -7,7 +7,7 @@ catch
 {Client} = require('minimum-rpc')
 
 # cursor class
-class TrackCursor extends Emitter
+class Cursor extends Emitter
 
   constructor: (@method, @data, @cb, @client) ->
     @val = null
@@ -45,6 +45,49 @@ class TrackCursor extends Emitter
     @mdls.push(mdl)
     return @
 
+buildChain = (funcs, cb) ->
+  err = null
+  val = undefined
+  _bind = (cur, next) ->
+    (_err, _val) ->
+      err = _err if _err
+      val = _val if _val
+      cur err, val, next
+  next = (err, val, next) ->
+    cb err, val
+  for cur in funcs.reverse()
+    next = _bind(cur, next)
+  next
+
+# cursor with track filters
+class TrackCursor extends Cursor
+
+  constructor: (method, data, cb, client) ->
+    @pres = []
+    @posts = []
+
+    _cb = (err, val) =>
+      next = buildChain(@posts, cb)
+      next err, val
+
+    super(method, data, _cb, client)
+
+  pre: (func) ->
+    @pres.push func
+    return @
+
+  post: (func) ->
+    @posts.push func
+    return @
+
+  update: (_data, trackContext) ->
+    @data = _data if _data isnt undefined
+
+    next = buildChain @pres, (err, trackContext) =>
+      return if err
+      super _data
+    next(null, trackContext)
+
 # client class
 class TrackClient extends Client
 
@@ -53,9 +96,11 @@ class TrackClient extends Client
 
     @_cursors = []
 
-    @_socket.on @sub_name_space + '_track', (data) =>
+    @_socket.on @sub_name_space + '_track', (trackContext) =>
 
-      cursor.update() for cursor in @_cursors
+      for cursor in @_cursors
+
+        cursor.update(undefined, trackContext)
 
   # track api which return cursor obj.
   track: (method, data, cb) ->
