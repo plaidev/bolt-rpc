@@ -88,7 +88,7 @@
     next = function(err, val, next) {
       return cb(err, val);
     };
-    _ref = funcs.reverse();
+    _ref = Array.prototype.concat(funcs).reverse();
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       cur = _ref[_i];
       next = _bind(cur, next);

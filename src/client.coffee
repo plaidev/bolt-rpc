@@ -55,7 +55,7 @@ buildChain = (funcs, cb) ->
       cur err, val, next
   next = (err, val, next) ->
     cb err, val
-  for cur in funcs.reverse()
+  for cur in Array.prototype.concat(funcs).reverse()
     next = _bind(cur, next)
   next
 
