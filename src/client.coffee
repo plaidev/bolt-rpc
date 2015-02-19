@@ -83,7 +83,7 @@ class TrackCursor extends Cursor
     return @
 
   update: (_data, trackContext) ->
-    super _data if trackContext isnt undefined
+    super _data if trackContext is undefined
     return if @tracking
     @tracking = true
 

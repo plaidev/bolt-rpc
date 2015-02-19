@@ -127,7 +127,7 @@
 
     TrackCursor.prototype.update = function(_data, trackContext) {
       var next;
-      if (trackContext !== void 0) {
+      if (trackContext === void 0) {
         TrackCursor.__super__.update.call(this, _data);
       }
       if (this.tracking) {
