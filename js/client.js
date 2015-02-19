@@ -127,8 +127,8 @@
 
     TrackCursor.prototype.update = function(_data, trackContext) {
       var next;
-      if (_data !== void 0) {
-        this.data = _data;
+      if (trackContext !== void 0) {
+        TrackCursor.__super__.update.call(this, _data);
       }
       if (this.tracking) {
         return;
@@ -156,13 +156,14 @@
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
       this._cursors = [];
       this._socket.on(this.sub_name_space + '_track', (function(_this) {
-        return function(trackContext) {
-          var cursor, _i, _len, _ref, _results;
+        return function(_arg) {
+          var cursor, data, _i, _len, _ref, _results;
+          data = _arg.data;
           _ref = _this._cursors;
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             cursor = _ref[_i];
-            _results.push(cursor.update(void 0, trackContext));
+            _results.push(cursor.update(void 0, data));
           }
           return _results;
         };

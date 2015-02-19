@@ -83,10 +83,10 @@ class TrackCursor extends Cursor
     return @
 
   update: (_data, trackContext) ->
-    @data = _data if _data isnt undefined
+    super _data if trackContext isnt undefined
     return if @tracking
-
     @tracking = true
+
     next = buildChain @pres, (err, trackContext) =>
       return if err
       super _data
@@ -100,11 +100,11 @@ class TrackClient extends Client
 
     @_cursors = []
 
-    @_socket.on @sub_name_space + '_track', (trackContext) =>
+    @_socket.on @sub_name_space + '_track', ({data}) =>
 
       for cursor in @_cursors
 
-        cursor.update(undefined, trackContext)
+        cursor.update(undefined, data)
 
   # track api which return cursor obj.
   track: (method, data, cb) ->
