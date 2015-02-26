@@ -114,7 +114,7 @@
         path = null;
         methods = this.posts;
       }
-      if (!args[0] instanceof Function) {
+      if (!(args[0] instanceof Function)) {
         options = args[0];
         args = args.slice(1);
       } else {

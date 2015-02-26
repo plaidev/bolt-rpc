@@ -78,7 +78,7 @@ class StackServer
       path = null
       methods = @posts
 
-    if not args[0] instanceof Function
+    if not (args[0] instanceof Function)
       options = args[0]
       args = args[1..]
     else
