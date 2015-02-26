@@ -35,6 +35,8 @@ class StackServer
 
     @pres = baseServer.pres.concat @pres
 
+    @posts = baseServer.posts.concat @posts
+
     methods = {}
 
     methods[name] = method for name, method of baseServer.methods
@@ -68,10 +70,12 @@ class StackServer
     args = [].slice.call(arguments)
 
     if args[0] instanceof String
-      @methods[args[0]] ?= []
+      path = args[0]
+      @methods[path] ?= []
       methods = @methods[path]
       args = args[1..]
     else
+      path = null
       methods = @posts
 
     if not args[0] instanceof Function
@@ -82,7 +86,7 @@ class StackServer
 
     methods.push {method, options} for method in args
 
-    @_update(path)
+    @_update(path) if path?
 
   _update: (path) ->
 
@@ -113,7 +117,7 @@ class StackServer
         err = {message: err.message} if err instanceof Error
         self.track.call(self, res.val) if track
         if err?
-          async.eachSeries @posts, ({method, options}, cb) ->
+          async.eachSeries self.posts, ({method, options}, cb) ->
             res._cb = cb
             method err, req, res, cb
           , (_err, _val) ->

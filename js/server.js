@@ -48,6 +48,7 @@
         return this;
       }
       this.pres = baseServer.pres.concat(this.pres);
+      this.posts = baseServer.posts.concat(this.posts);
       methods = {};
       _ref = baseServer.methods;
       for (name in _ref) {
@@ -100,15 +101,17 @@
     };
 
     StackServer.prototype.use = function() {
-      var args, method, methods, options, _base, _i, _len, _name;
+      var args, method, methods, options, path, _base, _i, _len;
       args = [].slice.call(arguments);
       if (args[0] instanceof String) {
-        if ((_base = this.methods)[_name = args[0]] == null) {
-          _base[_name] = [];
+        path = args[0];
+        if ((_base = this.methods)[path] == null) {
+          _base[path] = [];
         }
         methods = this.methods[path];
         args = args.slice(1);
       } else {
+        path = null;
         methods = this.posts;
       }
       if (!args[0] instanceof Function) {
@@ -124,7 +127,9 @@
           options: options
         });
       }
-      return this._update(path);
+      if (path != null) {
+        return this._update(path);
+      }
     };
 
     StackServer.prototype._update = function(path) {
@@ -162,7 +167,7 @@
             self.track.call(self, res.val);
           }
           if (err != null) {
-            return async.eachSeries(this.posts, function(_arg, cb) {
+            return async.eachSeries(self.posts, function(_arg, cb) {
               var method, options;
               method = _arg.method, options = _arg.options;
               res._cb = cb;
