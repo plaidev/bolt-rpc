@@ -38,6 +38,7 @@
         this.server = new Server(this.io, {}, options);
       }
       this.pres = [];
+      this.posts = [];
       this.methods = {};
     }
 
@@ -47,6 +48,7 @@
         return this;
       }
       this.pres = baseServer.pres.concat(this.pres);
+      this.posts = baseServer.posts.concat(this.posts);
       methods = {};
       _ref = baseServer.methods;
       for (name in _ref) {
@@ -99,26 +101,35 @@
     };
 
     StackServer.prototype.use = function() {
-      var method, methods, options, path, _i, _len;
-      path = arguments[0];
-      options = arguments[1];
-      methods = [].slice.call(arguments, 1);
-      if (options.constructor.name === "Function") {
-        options = {};
+      var args, method, methods, options, path, _base, _i, _len;
+      args = [].slice.call(arguments);
+      if (typeof args[0] === 'string' || args[0] instanceof String) {
+        path = args[0];
+        if ((_base = this.methods)[path] == null) {
+          _base[path] = [];
+        }
+        methods = this.methods[path];
+        args = args.slice(1);
       } else {
-        methods = [].slice.call(arguments, 2);
+        path = null;
+        methods = this.posts;
       }
-      if (!(path in this.methods)) {
-        this.methods[path] = [];
+      if (!(args[0] instanceof Function)) {
+        options = args[0];
+        args = args.slice(1);
+      } else {
+        options = {};
       }
-      for (_i = 0, _len = methods.length; _i < _len; _i++) {
-        method = methods[_i];
-        this.methods[path].push({
+      for (_i = 0, _len = args.length; _i < _len; _i++) {
+        method = args[_i];
+        methods.push({
           method: method,
           options: options
         });
       }
-      return this._update(path);
+      if (path != null) {
+        return this._update(path);
+      }
     };
 
     StackServer.prototype._update = function(path) {
@@ -155,7 +166,18 @@
           if (track) {
             self.track.call(self, res.val);
           }
-          return next(err, res.val);
+          if (err != null) {
+            return async.eachSeries(self.posts, function(_arg, cb) {
+              var method, options;
+              method = _arg.method, options = _arg.options;
+              res._cb = cb;
+              return method(err, req, res, cb);
+            }, function(_err, _val) {
+              return next(err, res.val);
+            });
+          } else {
+            return next(null, res.val);
+          }
         });
       };
       return this.server.set(path, _m);

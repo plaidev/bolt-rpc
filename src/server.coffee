@@ -25,6 +25,8 @@ class StackServer
 
     @pres = []
 
+    @posts = []
+
     @methods = {}
 
   extend: (baseServer) ->
@@ -32,6 +34,8 @@ class StackServer
     return @ if not baseServer?
 
     @pres = baseServer.pres.concat @pres
+
+    @posts = baseServer.posts.concat @posts
 
     methods = {}
 
@@ -61,24 +65,28 @@ class StackServer
 
     @server.channel.emit @server.sub_name_space + '_track', {data}
 
-  use: () ->
+  use: ->
 
-    path = arguments[0]
+    args = [].slice.call(arguments)
 
-    options = arguments[1]
-
-    methods = [].slice.call(arguments, 1)
-
-    if options.constructor.name is "Function"
-      options = {}
+    if typeof(args[0]) is 'string' or args[0] instanceof String
+      path = args[0]
+      @methods[path] ?= []
+      methods = @methods[path]
+      args = args[1..]
     else
-      methods = [].slice.call(arguments, 2)
+      path = null
+      methods = @posts
 
-    @methods[path] = [] if not (path of @methods)
+    if not (args[0] instanceof Function)
+      options = args[0]
+      args = args[1..]
+    else
+      options = {}
 
-    @methods[path].push {method, options} for method in methods
+    methods.push {method, options} for method in args
 
-    @_update(path)
+    @_update(path) if path?
 
   _update: (path) ->
 
@@ -108,7 +116,14 @@ class StackServer
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
         self.track.call(self, res.val) if track
-        next(err, res.val)
+        if err?
+          async.eachSeries self.posts, ({method, options}, cb) ->
+            res._cb = cb
+            method err, req, res, cb
+          , (_err, _val) ->
+            next err, res.val
+        else
+          next null, res.val
 
     @server.set path, _m
 
