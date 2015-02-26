@@ -103,7 +103,7 @@
     StackServer.prototype.use = function() {
       var args, method, methods, options, path, _base, _i, _len;
       args = [].slice.call(arguments);
-      if (args[0] instanceof String) {
+      if (typeof args[0] === 'string' || args[0] instanceof String) {
         path = args[0];
         if ((_base = this.methods)[path] == null) {
           _base[path] = [];

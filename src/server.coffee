@@ -69,7 +69,7 @@ class StackServer
 
     args = [].slice.call(arguments)
 
-    if args[0] instanceof String
+    if typeof(args[0]) is 'string' or args[0] instanceof String
       path = args[0]
       @methods[path] ?= []
       methods = @methods[path]
