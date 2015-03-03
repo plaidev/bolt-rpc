@@ -25,10 +25,14 @@
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
     "async": "^0.9.0",
-    "minimum-rpc": "*",
+    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git",
     "shallow-copy": "0.0.1"
   },
   "devDependencies": {
+    "component": "^0.19.9",
+    "grunt": "~0.4.2",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-coffee": "~0.8.0",
     "coffee-script": "^1.8.0",
     "grunt": "^0.4.5",
     "grunt-contrib-coffee": "^0.12.0",
