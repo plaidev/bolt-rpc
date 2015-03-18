@@ -100,7 +100,8 @@ class StackServer
 
       req = copy(socket.request)
 
-      req.data = data
+      req.body = req.data = data
+      req.path = path
 
       res = new Response()
 
