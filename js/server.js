@@ -142,7 +142,8 @@
       _m = function(data, next, socket) {
         var req, res, series, track;
         req = copy(socket.request);
-        req.data = data;
+        req.body = req.data = data;
+        req.path = path;
         res = new Response();
         series = [];
         track = false;
