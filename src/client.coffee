@@ -65,7 +65,7 @@ buildChain = (funcs, cb) ->
       val = _val if _val
       cur err, val, next
   next = (err, val, next) ->
-    cb err, val
+    cb err, val if cb
   for cur in Array.prototype.concat(funcs).reverse()
     next = _bind(cur, next)
   next
@@ -96,7 +96,7 @@ class TrackCursor extends Cursor
     @tracking = flag
 
   update: (_data, trackContext) ->
-    super _data if trackContext is undefined
+    return super _data if trackContext is undefined
     return if @tracking is false
 
     next = buildChain @pres, (err, trackContext) =>
