@@ -13,6 +13,8 @@ class Cursor extends Emitter
     @val = null
     @err = null
     @mdls = []
+    @calling = false
+    @updateRequest = false
 
   # error handler
   error: (cb) ->
@@ -28,7 +30,14 @@ class Cursor extends Emitter
   update: (_data) ->
     @data = _data if _data isnt undefined
 
+    if @calling
+      @updateRequest = true
+      return @
+
+    @calling = true
+    @updateRequest = false
     @client.send @method, @data, (err, val) =>
+      @calling = false
       @err = err or null
       @val = val or null
       if err
@@ -36,7 +45,9 @@ class Cursor extends Emitter
       else
         val = mdl(val) for mdl in @mdls
         @emit 'end', val
+
       @cb(err, val) if @cb
+      @update() if @updateRequest
 
     return @
 
