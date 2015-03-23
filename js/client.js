@@ -22,6 +22,8 @@
       this.val = null;
       this.err = null;
       this.mdls = [];
+      this.calling = false;
+      this.updateRequest = false;
     }
 
     Cursor.prototype.error = function(cb) {
@@ -38,9 +40,16 @@
       if (_data !== void 0) {
         this.data = _data;
       }
+      if (this.calling) {
+        this.updateRequest = true;
+        return this;
+      }
+      this.calling = true;
+      this.updateRequest = false;
       this.client.send(this.method, this.data, (function(_this) {
         return function(err, val) {
           var mdl, _i, _len, _ref;
+          _this.calling = false;
           _this.err = err || null;
           _this.val = val || null;
           if (err) {
@@ -54,7 +63,10 @@
             _this.emit('end', val);
           }
           if (_this.cb) {
-            return _this.cb(err, val);
+            _this.cb(err, val);
+          }
+          if (_this.updateRequest) {
+            return _this.update();
           }
         };
       })(this));
@@ -86,7 +98,9 @@
       };
     };
     next = function(err, val, next) {
-      return cb(err, val);
+      if (cb) {
+        return cb(err, val);
+      }
     };
     _ref = Array.prototype.concat(funcs).reverse();
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -103,11 +117,10 @@
       var _cb;
       this.pres = [];
       this.posts = [];
-      this.tracking = false;
+      this.tracking = true;
       _cb = (function(_this) {
         return function(err, val) {
           var next;
-          _this.tracking = false;
           next = buildChain(_this.posts, cb);
           return next(err, val);
         };
@@ -125,15 +138,18 @@
       return this;
     };
 
+    TrackCursor.prototype.track = function(flag) {
+      return this.tracking = flag;
+    };
+
     TrackCursor.prototype.update = function(_data, trackContext) {
       var next;
       if (trackContext === void 0) {
-        TrackCursor.__super__.update.call(this, _data);
+        return TrackCursor.__super__.update.call(this, _data);
       }
-      if (this.tracking) {
+      if (this.tracking === false) {
         return;
       }
-      this.tracking = true;
       next = buildChain(this.pres, (function(_this) {
         return function(err, trackContext) {
           if (err) {
