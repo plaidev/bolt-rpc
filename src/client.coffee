@@ -76,10 +76,9 @@ class TrackCursor extends Cursor
   constructor: (method, data, cb, client) ->
     @pres = []
     @posts = []
-    @tracking = false
+    @tracking = true
 
     _cb = (err, val) =>
-      @tracking = false
       next = buildChain(@posts, cb)
       next err, val
 
@@ -93,10 +92,12 @@ class TrackCursor extends Cursor
     @posts.push func
     return @
 
+  track: (flag) ->
+    @tracking = flag
+
   update: (_data, trackContext) ->
     super _data if trackContext is undefined
-    return if @tracking
-    @tracking = true
+    return if @tracking is false
 
     next = buildChain @pres, (err, trackContext) =>
       return if err
