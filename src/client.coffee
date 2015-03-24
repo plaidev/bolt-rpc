@@ -1,6 +1,6 @@
 # event emitter for component and node.js
 try
-  Emitter = require('emitter')
+  Emitter = require('component-emitter')
 catch
   Emitter = require('events').EventEmitter
 
