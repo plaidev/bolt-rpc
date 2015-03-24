@@ -46,13 +46,19 @@ describe "Basic RPC Function", ->
       assert validate.called
       done()
 
+    # heavy task. 1sec
+    server.use 'heavyTask', (req, res, next) ->
+      setTimeout ->
+        res.send req.body
+      , 200
+
 describe "Promise API", ->
 
   it "end", (done) ->
 
     cursor = client.track 'add', {a: 1, b: 2}
     assert cursor.val is null
-    cursor.on 'end', (val) ->
+    cursor.end (val) ->
       assert val is 3
       assert cursor.val is val
       done()
@@ -60,7 +66,7 @@ describe "Promise API", ->
   it "error", (done) ->
 
     cursor = client.track 'add', {b: 2}
-    cursor.on 'error', (err) ->
+    cursor.error (err) ->
       assert err
       assert cursor.err is err
       done()
@@ -95,3 +101,16 @@ describe "Promise API", ->
     cursor.end (val) ->
       assert val is 5
       done()
+
+  it 'update is reject concurrent calls.', (done) ->
+    callCount = 0
+    cursor = client.track 'heavyTask', {call: 1}
+    cursor.end (val) ->
+      assert val.call in [1, 5]
+      callCount++
+      if callCount >= 2
+        done()
+    cursor.update({call: 2})
+    cursor.update({call: 3})
+    cursor.update({call: 4})
+    cursor.update({call: 5})

@@ -13,6 +13,8 @@ class Cursor extends Emitter
     @val = null
     @err = null
     @mdls = []
+    @calling = false
+    @updateRequest = false
 
   # error handler
   error: (cb) ->
@@ -28,7 +30,14 @@ class Cursor extends Emitter
   update: (_data) ->
     @data = _data if _data isnt undefined
 
+    if @calling
+      @updateRequest = true
+      return @
+
+    @calling = true
+    @updateRequest = false
     @client.send @method, @data, (err, val) =>
+      @calling = false
       @err = err or null
       @val = val or null
       if err
@@ -36,7 +45,9 @@ class Cursor extends Emitter
       else
         val = mdl(val) for mdl in @mdls
         @emit 'end', val
+
       @cb(err, val) if @cb
+      @update() if @updateRequest
 
     return @
 
@@ -54,7 +65,7 @@ buildChain = (funcs, cb) ->
       val = _val if _val
       cur err, val, next
   next = (err, val, next) ->
-    cb err, val
+    cb err, val if cb
   for cur in Array.prototype.concat(funcs).reverse()
     next = _bind(cur, next)
   next
@@ -65,10 +76,9 @@ class TrackCursor extends Cursor
   constructor: (method, data, cb, client) ->
     @pres = []
     @posts = []
-    @tracking = false
+    @tracking = true
 
     _cb = (err, val) =>
-      @tracking = false
       next = buildChain(@posts, cb)
       next err, val
 
@@ -82,10 +92,12 @@ class TrackCursor extends Cursor
     @posts.push func
     return @
 
+  track: (flag) ->
+    @tracking = flag
+
   update: (_data, trackContext) ->
-    super _data if trackContext is undefined
-    return if @tracking
-    @tracking = true
+    return super _data if trackContext is undefined
+    return if @tracking is false
 
     next = buildChain @pres, (err, trackContext) =>
       return if err
