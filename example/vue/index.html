@@ -15,7 +15,7 @@
 
 <!-- api -->
 <script type="text/javascript">
-  var Client = require('bolt-rpc/js/client');
+  var Client = require('bolt-rpc').Client;
   var socket = io.connect('http://localhost:2000/__')
   var todo = new Client(socket, {sub_name_space: 'todo'});
 </script>
