@@ -40,6 +40,9 @@
       if (_data !== void 0) {
         this.data = _data;
       }
+      if (this.data == null) {
+        return;
+      }
       if (this.calling) {
         this.updateRequest = true;
         return this;
@@ -118,13 +121,16 @@
       this.pres = [];
       this.posts = [];
       this.tracking = true;
-      _cb = (function(_this) {
-        return function(err, val) {
-          var next;
-          next = buildChain(_this.posts, cb);
-          return next(err, val);
-        };
-      })(this);
+      _cb = null;
+      if (cb != null) {
+        _cb = (function(_this) {
+          return function(err, val) {
+            var next;
+            next = buildChain(_this.posts, cb);
+            return next(err, val);
+          };
+        })(this);
+      }
       TrackCursor.__super__.constructor.call(this, method, data, _cb, client);
     }
 
@@ -188,6 +194,12 @@
 
     TrackClient.prototype.track = function(method, data, cb) {
       var cursor;
+      if (data == null) {
+        data = null;
+      }
+      if (cb == null) {
+        cb = null;
+      }
       cursor = new TrackCursor(method, data, cb, this);
       this._cursors.push(cursor);
       cursor.update();
