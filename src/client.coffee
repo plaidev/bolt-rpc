@@ -29,6 +29,7 @@ class Cursor extends Emitter
   # querying
   update: (_data) ->
     @data = _data if _data isnt undefined
+    return if not @data?
 
     if @calling
       @updateRequest = true
@@ -78,9 +79,11 @@ class TrackCursor extends Cursor
     @posts = []
     @tracking = true
 
-    _cb = (err, val) =>
-      next = buildChain(@posts, cb)
-      next err, val
+    _cb = null
+    if cb?
+      _cb = (err, val) =>
+        next = buildChain(@posts, cb)
+        next err, val
 
     super(method, data, _cb, client)
 
@@ -119,7 +122,7 @@ class TrackClient extends Client
         cursor.update(undefined, data)
 
   # track api which return cursor obj.
-  track: (method, data, cb) ->
+  track: (method, data=null, cb=null) ->
 
     cursor = new TrackCursor(method, data, cb, @)
 

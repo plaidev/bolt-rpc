@@ -52,9 +52,9 @@ describe "Basic RPC Function", ->
         res.send req.body
       , 200
 
-describe "Promise API", ->
+describe 'Promise API', ->
 
-  it "end", (done) ->
+  it 'end', (done) ->
 
     cursor = client.track 'add', {a: 1, b: 2}
     assert cursor.val is null
@@ -63,7 +63,7 @@ describe "Promise API", ->
       assert cursor.val is val
       done()
 
-  it "error", (done) ->
+  it 'error', (done) ->
 
     cursor = client.track 'add', {b: 2}
     cursor.error (err) ->
@@ -71,7 +71,7 @@ describe "Promise API", ->
       assert cursor.err is err
       done()
 
-  it "chainable", (done) ->
+  it 'chainable', (done) ->
 
     cursor = client.track 'add', {a: 1, b: 2}
     cursor.error((err) ->).end (val) ->
@@ -79,7 +79,7 @@ describe "Promise API", ->
       assert cursor.val is val
       done()
 
-  it "update", (done) ->
+  it 'update', (done) ->
     updated = false
     cursor = client.track 'add', {a: 1, b: 2}
     cursor.end((val) ->
@@ -91,7 +91,7 @@ describe "Promise API", ->
       done()
     )
 
-  it "map", (done) ->
+  it 'map', (done) ->
 
     cursor = client.track 'add', {a: 1, b: 2}
     cursor.map (val) ->
@@ -114,3 +114,18 @@ describe "Promise API", ->
     cursor.update({call: 3})
     cursor.update({call: 4})
     cursor.update({call: 5})
+
+  it 'simple track cursor, end after update.', (done) ->
+    check = false
+
+    cursor = client.track 'add'
+    cursor.end (val) ->
+      assert check
+      assert val is 3
+      done()
+    cursor.track true
+
+    setTimeout ->
+      check = true
+      cursor.update({a: 1, b: 2})
+    , 200
