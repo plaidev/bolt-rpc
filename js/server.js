@@ -38,7 +38,6 @@
         this.server = new Server(this.io, {}, options);
       }
       this.pres = [];
-      this.posts = [];
       this.methods = {};
     }
 
@@ -48,7 +47,6 @@
         return this;
       }
       this.pres = baseServer.pres.concat(this.pres);
-      this.posts = baseServer.posts.concat(this.posts);
       methods = {};
       _ref = baseServer.methods;
       for (name in _ref) {
@@ -112,7 +110,7 @@
         args = args.slice(1);
       } else {
         path = null;
-        methods = this.posts;
+        methods = [];
       }
       if (!(args[0] instanceof Function)) {
         options = args[0];
@@ -167,18 +165,7 @@
           if (track) {
             self.track.call(self, res.val);
           }
-          if (err != null) {
-            return async.eachSeries(self.posts, function(_arg, cb) {
-              var method, options;
-              method = _arg.method, options = _arg.options;
-              res._cb = cb;
-              return method(err, req, res, cb);
-            }, function(_err, _val) {
-              return next(err, res.val);
-            });
-          } else {
-            return next(null, res.val);
-          }
+          return next(err, res.val);
         });
       };
       return this.server.set(path, _m);

@@ -25,7 +25,7 @@ class StackServer
 
     @pres = []
 
-    @posts = []
+    # @posts = []
 
     @methods = {}
 
@@ -35,7 +35,7 @@ class StackServer
 
     @pres = baseServer.pres.concat @pres
 
-    @posts = baseServer.posts.concat @posts
+    # @posts = baseServer.posts.concat @posts
 
     methods = {}
 
@@ -76,7 +76,8 @@ class StackServer
       args = args[1..]
     else
       path = null
-      methods = @posts
+      methods = []
+      # methods = @posts
 
     if not (args[0] instanceof Function)
       options = args[0]
@@ -117,14 +118,15 @@ class StackServer
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
         self.track.call(self, res.val) if track
-        if err?
-          async.eachSeries self.posts, ({method, options}, cb) ->
-            res._cb = cb
-            method err, req, res, cb
-          , (_err, _val) ->
-            next err, res.val
-        else
-          next null, res.val
+        next err, res.val
+        # if err?
+        #   async.eachSeries self.posts, ({method, options}, cb) ->
+        #     res._cb = cb
+        #     method err, req, res, cb
+        #   , (_err, _val) ->
+        #     next err, res.val
+        # else
+        #   next null, res.val
 
     @server.set path, _m
 
