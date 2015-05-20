@@ -115,14 +115,14 @@ class TrackClient extends Client
 
     @_cursors = []
 
+    @get_namespace = options.get_namespace || () ->
+      return '_'
+
     @_socket.on @get_namespace() + '.' + @sub_name_space + '_track', (data) =>
 
       for cursor in @_cursors
 
         cursor.update(undefined, data)
-
-  get_namespace: () ->
-    return '_'
 
   # track api which return cursor obj.
   track: (method, data=null, cb=null) ->

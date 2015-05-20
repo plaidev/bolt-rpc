@@ -177,6 +177,9 @@
     function TrackClient(io_or_socket, options) {
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
       this._cursors = [];
+      this.get_namespace = options.get_namespace || function() {
+        return '_';
+      };
       this._socket.on(this.get_namespace() + '.' + this.sub_name_space + '_track', (function(_this) {
         return function(data) {
           var cursor, _i, _len, _ref, _results;
@@ -190,10 +193,6 @@
         };
       })(this));
     }
-
-    TrackClient.prototype.get_namespace = function() {
-      return '_';
-    };
 
     TrackClient.prototype.track = function(method, data, cb) {
       var cursor;
