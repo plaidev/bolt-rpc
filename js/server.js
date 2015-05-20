@@ -92,10 +92,12 @@
       return _results;
     };
 
-    StackServer.prototype.track = function(data) {
-      return this.server.channel.emit(this.server.sub_name_space + '_track', {
-        data: data
-      });
+    StackServer.prototype.get_namespace = function(path) {
+      return '_';
+    };
+
+    StackServer.prototype.track = function(ns, data) {
+      return this.server.channel.emit(ns + '.' + this.server.sub_name_space + '_track', data);
     };
 
     StackServer.prototype.use = function() {
@@ -154,6 +156,7 @@
           }
           return method(req, res, cb, socket);
         }, function(err, val) {
+          var ns;
           if (err === FORCE_STOP) {
             err = null;
           }
@@ -162,8 +165,9 @@
               message: err.message
             };
           }
+          ns = self.get_namespace(path);
           if (track) {
-            self.track.call(self, res.val);
+            self.track.call(self, ns, res.val);
           }
           return next(err, res.val);
         });

@@ -61,9 +61,12 @@ class StackServer
 
     @pres.push {method, options} for method in methods
 
-  track: (data) ->
+  get_namespace: (path) ->
+    return '_'
 
-    @server.channel.emit @server.sub_name_space + '_track', {data}
+  track: (ns, data) ->
+
+    @server.channel.emit ns + '.' + @server.sub_name_space + '_track', data
 
   use: ->
 
@@ -117,7 +120,8 @@ class StackServer
       , (err, val) ->
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
-        self.track.call(self, res.val) if track
+        ns = self.get_namespace(path)
+        self.track.call(self, ns, res.val) if track
         next err, res.val
         # if err?
         #   async.eachSeries self.posts, ({method, options}, cb) ->
