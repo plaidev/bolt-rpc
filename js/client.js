@@ -177,7 +177,7 @@
     function TrackClient(io_or_socket, options) {
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
       this._cursors = [];
-      this._socket.on(this.get_namespace + '.' + this.sub_name_space + '_track', (function(_this) {
+      this._socket.on(this.get_namespace() + '.' + this.sub_name_space + '_track', (function(_this) {
         return function(data) {
           var cursor, _i, _len, _ref, _results;
           _ref = _this._cursors;

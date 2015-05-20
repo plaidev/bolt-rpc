@@ -115,7 +115,7 @@ class TrackClient extends Client
 
     @_cursors = []
 
-    @_socket.on @get_namespace + '.' + @sub_name_space + '_track', (data) =>
+    @_socket.on @get_namespace() + '.' + @sub_name_space + '_track', (data) =>
 
       for cursor in @_cursors
 
