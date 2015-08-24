@@ -33,6 +33,13 @@ server = new Server(io)
 # auth -> validate -> process
 server.pre (req, res, next) ->
   console.log 'authentification should be here'
+
+
+  # use req.end to calc response times
+  starttime = #
+  req.end () ->
+    endtime = #
+
   next()
 
 server.use 'add', (req, res, next) ->

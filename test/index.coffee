@@ -28,6 +28,10 @@ describe "Basic RPC Function", ->
     # auth
     server.pre pre
 
+    server.pre (req, res, next) ->
+      req.end () ->
+      next()
+
     # validate
     server.use 'add', validate
 

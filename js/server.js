@@ -142,6 +142,12 @@
       _m = function(data, next, socket) {
         var req, res, series, track;
         req = copy(socket.request);
+        req.end = function(cb) {
+          if (!req.__ends__) {
+            req.__ends__ = [];
+          }
+          return req.__ends__.push(cb);
+        };
         req.body = req.data = data;
         req.path = path;
         res = new Response();
@@ -168,6 +174,11 @@
           ns = self.get_namespace(path);
           if (track) {
             self.track.call(self, ns, res.val);
+          }
+          if (req.__ends__) {
+            req.__ends__.map(function(end) {
+              return end();
+            });
           }
           return next(err, res.val);
         });
