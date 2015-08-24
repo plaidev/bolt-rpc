@@ -104,6 +104,10 @@ class StackServer
 
       req = copy(socket.request)
 
+      req.end = (cb) ->
+        req.__ends__ = [] if not req.__ends__
+        req.__ends__.push cb
+
       req.body = req.data = data
       req.path = path
 
@@ -122,6 +126,8 @@ class StackServer
         err = {message: err.message} if err instanceof Error
         ns = self.get_namespace(path)
         self.track.call(self, ns, res.val) if track
+        if req.__ends__
+          req.__ends__.map (end) -> end()
         next err, res.val
         # if err?
         #   async.eachSeries self.posts, ({method, options}, cb) ->
