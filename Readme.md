@@ -2,6 +2,9 @@
 
 rpc module which can be extended by middlewares like express.js.
 
+HOME: http://plaidev.github.io/bolt-rpc/
+Performance Comparison: https://github.com/nashibao/node-rpc-test
+
 ## Installation
 
   Install with npm
