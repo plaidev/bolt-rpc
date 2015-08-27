@@ -61,7 +61,7 @@ class StackServer
 
     @pres.push {method, options} for method in methods
 
-  get_namespace: (path) ->
+  get_namespace: (path, req) ->
     return '_'
 
   track: (ns, data) ->
@@ -125,25 +125,24 @@ class StackServer
       track = false
 
       async.eachSeries _methods, ({method, options}, cb) ->
+
         res._cb = cb
         track = true if options.track
         method(req, res, cb, socket)
+
       , (err, val) ->
+
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
-        ns = self.get_namespace(path)
-        self.track.call(self, ns, res.val) if track
+
+        if track
+          ns = self.get_namespace(path, req)
+          self.track.call(self, ns, res.val)
+
         if req.__ends__
           req.__ends__.map (end) -> end()
+
         next err, res.val
-        # if err?
-        #   async.eachSeries self.posts, ({method, options}, cb) ->
-        #     res._cb = cb
-        #     method err, req, res, cb
-        #   , (_err, _val) ->
-        #     next err, res.val
-        # else
-        #   next null, res.val
 
     @server.set path, _m
 

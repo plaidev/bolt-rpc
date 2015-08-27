@@ -34,7 +34,7 @@ class Cursor extends Emitter
 
       track_namespace = @options.track_namespace || '_'
 
-      @client._socket.on @track_namespace + '_track', (data) =>
+      @client._socket.on track_namespace + '_track', (data) =>
 
         @update(undefined, data)
 

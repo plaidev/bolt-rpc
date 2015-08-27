@@ -92,7 +92,7 @@
       return _results;
     };
 
-    StackServer.prototype.get_namespace = function(path) {
+    StackServer.prototype.get_namespace = function(path, req) {
       return '_';
     };
 
@@ -177,8 +177,8 @@
               message: err.message
             };
           }
-          ns = self.get_namespace(path);
           if (track) {
+            ns = self.get_namespace(path, req);
             self.track.call(self, ns, res.val);
           }
           if (req.__ends__) {

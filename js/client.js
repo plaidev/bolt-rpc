@@ -48,7 +48,7 @@
       this.updateRequest = false;
       if ((_ref = this.options) != null ? _ref.track : void 0) {
         track_namespace = this.options.track_namespace || '_';
-        this.client._socket.on(this.track_namespace + '_track', (function(_this) {
+        this.client._socket.on(track_namespace + '_track', (function(_this) {
           return function(data) {
             return _this.update(void 0, data);
           };
