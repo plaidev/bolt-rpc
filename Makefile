@@ -9,6 +9,6 @@ install: components build/build.js
 	component build --standalone bolt --out . --name _index
 
 clean:
-	rm -fr build components template.js
+	rm -fr build components template.js js
 
 .PHONY: clean

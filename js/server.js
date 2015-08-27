@@ -139,8 +139,13 @@
       }
       self = this;
       _methods = this.pres.concat(this.methods[path]);
-      _m = function(data, next, socket) {
+      _m = function(data, options, next, socket) {
         var req, res, series, track;
+        if ('function' === typeof options) {
+          socket = next;
+          next = options;
+          options = {};
+        }
         req = copy(socket.request);
         req.end = function(cb) {
           if (!req.__ends__) {
@@ -150,6 +155,7 @@
         };
         req.body = req.data = data;
         req.path = path;
+        req.options = options != null ? options : {};
         res = new Response();
         series = [];
         track = false;

@@ -100,7 +100,13 @@ class StackServer
 
     _methods = @pres.concat(@methods[path])
 
-    _m = (data, next, socket) ->
+    _m = (data, options, next, socket) ->
+
+      # swaps
+      if 'function' is typeof options
+        socket = next
+        next = options
+        options = {}
 
       req = copy(socket.request)
 
@@ -110,6 +116,7 @@ class StackServer
 
       req.body = req.data = data
       req.path = path
+      req.options = options ? {}
 
       res = new Response()
 
