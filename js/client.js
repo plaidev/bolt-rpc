@@ -30,6 +30,7 @@
     __extends(Cursor, _super);
 
     function Cursor(method, data, options, cb, client) {
+      var track_namespace, _ref;
       this.method = method;
       this.data = data;
       this.options = options;
@@ -45,6 +46,14 @@
       this.mdls = [];
       this.calling = false;
       this.updateRequest = false;
+      if ((_ref = this.options) != null ? _ref.track : void 0) {
+        track_namespace = this.options.track_namespace || '_';
+        this.client._socket.on(this.track_namespace + '_track', (function(_this) {
+          return function(data) {
+            return _this.update(void 0, data);
+          };
+        })(this));
+      }
     }
 
     Cursor.prototype.error = function(cb) {
@@ -202,22 +211,6 @@
 
     function TrackClient(io_or_socket, options) {
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
-      this._cursors = [];
-      this.get_namespace = options.get_namespace || function() {
-        return '_';
-      };
-      this._socket.on(this.get_namespace() + '.' + this.sub_name_space + '_track', (function(_this) {
-        return function(data) {
-          var cursor, _i, _len, _ref, _results;
-          _ref = _this._cursors;
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            cursor = _ref[_i];
-            _results.push(cursor.update(void 0, data));
-          }
-          return _results;
-        };
-      })(this));
     }
 
     TrackClient.prototype.track = function(method, data, options, cb) {
@@ -236,7 +229,6 @@
         cb: cb
       }), options = _ref.options, cb = _ref.cb;
       cursor = new TrackCursor(method, data, options, cb, this);
-      this._cursors.push(cursor);
       cursor.update();
       return cursor;
     };

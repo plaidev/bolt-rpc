@@ -97,7 +97,7 @@
     };
 
     StackServer.prototype.track = function(ns, data) {
-      return this.server.channel.emit(ns + '.' + this.server.sub_name_space + '_track', data);
+      return this.server.channel.emit(ns + '_track', data);
     };
 
     StackServer.prototype.use = function() {
