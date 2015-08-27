@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha --reporter spec --compilers coffee:coffee-script/register",
-    "server": "nodemon -e coffee example/stack/server.coffee",
+    "server": "coffee example/stack/server.coffee",
     "client": "coffee example/stack/client.coffee",
     "vue-server": "nodemon -e coffee example/vue/server.coffee",
     "make": "browserify -t coffeeify -r ./index:bolt-rpc --extension=\".coffee\" index.js > build/build.js"

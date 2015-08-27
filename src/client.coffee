@@ -29,6 +29,15 @@ class Cursor extends Emitter
     @calling = false
     @updateRequest = false
 
+    # activate tracking
+    if @options?.track
+
+      track_namespace = @options.track_namespace || '_'
+
+      @client._socket.on @track_namespace + '_track', (data) =>
+
+        @update(undefined, data)
+
   # error handler
   error: (cb) ->
     @on 'error', cb
@@ -133,25 +142,12 @@ class TrackClient extends Client
   constructor: (io_or_socket, options) ->
     super io_or_socket, options
 
-    @_cursors = []
-
-    @get_namespace = options.get_namespace || () ->
-      return '_'
-
-    @_socket.on @get_namespace() + '.' + @sub_name_space + '_track', (data) =>
-
-      for cursor in @_cursors
-
-        cursor.update(undefined, data)
-
   # track api which return cursor obj.
   track: (method, data=null, options=null, cb=null) ->
 
     {options, cb} = __swap_options_and_cb {options, cb}
 
     cursor = new TrackCursor(method, data, options, cb, @)
-
-    @_cursors.push(cursor)
 
     cursor.update()
 

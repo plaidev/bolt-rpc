@@ -66,7 +66,7 @@ class StackServer
 
   track: (ns, data) ->
 
-    @server.channel.emit ns + '.' + @server.sub_name_space + '_track', data
+    @server.channel.emit ns + '_track', data
 
   use: ->
 
