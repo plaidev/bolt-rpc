@@ -6,15 +6,37 @@ catch
 
 {Client} = require('minimum-rpc')
 
+
+__swap_options_and_cb = ({options, cb}) ->
+  if 'function' is typeof options
+    return {cb: options, options: {}}
+  return {cb, options}
+
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@method, @data, @cb, @client) ->
+  constructor: (@method, @data, @options, @cb, @client) ->
+
+    # swaps
+    if 'function' is typeof @options
+      @client = @cb
+      @cb = @options
+      @options = {}
+
     @val = null
     @err = null
     @mdls = []
     @calling = false
     @updateRequest = false
+
+    # activate tracking
+    if @options?.track
+
+      track_namespace = @options.track_namespace || '_'
+
+      @client._socket.on track_namespace + '_track', (data) =>
+
+        @update(undefined, data)
 
   # error handler
   error: (cb) ->
@@ -37,7 +59,7 @@ class Cursor extends Emitter
 
     @calling = true
     @updateRequest = false
-    @client.send @method, @data, (err, val) =>
+    @client.send @method, @data, @options, (err, val) =>
       @calling = false
       @err = err or null
       @val = val or null
@@ -74,7 +96,14 @@ buildChain = (funcs, cb) ->
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  constructor: (method, data, cb, client) ->
+  constructor: (method, data, options, cb, client) ->
+
+    # swaps
+    if 'function' is typeof options
+      client = cb
+      cb = options
+      options = {}
+
     @pres = []
     @posts = []
     @tracking = true
@@ -85,7 +114,7 @@ class TrackCursor extends Cursor
         next = buildChain(@posts, cb)
         next err, val
 
-    super(method, data, _cb, client)
+    super(method, data, options, _cb, client)
 
   pre: (func) ->
     @pres.push func
@@ -113,37 +142,28 @@ class TrackClient extends Client
   constructor: (io_or_socket, options) ->
     super io_or_socket, options
 
-    @_cursors = []
-
-    @get_namespace = options.get_namespace || () ->
-      return '_'
-
-    @_socket.on @get_namespace() + '.' + @sub_name_space + '_track', (data) =>
-
-      for cursor in @_cursors
-
-        cursor.update(undefined, data)
-
   # track api which return cursor obj.
-  track: (method, data=null, cb=null) ->
+  track: (method, data=null, options=null, cb=null) ->
 
-    cursor = new TrackCursor(method, data, cb, @)
+    {options, cb} = __swap_options_and_cb {options, cb}
 
-    @_cursors.push(cursor)
+    cursor = new TrackCursor(method, data, options, cb, @)
 
     cursor.update()
 
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, cb) ->
+  get: (method, data, options, cb) ->
+
+    {options, cb} = __swap_options_and_cb {options, cb}
 
     res = {
       err: null
       val: null
     }
 
-    cursor = @track method, data, (err, val) ->
+    cursor = @track method, data, options, (err, val) ->
       res.err = err
       res.val = val
 

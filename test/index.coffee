@@ -40,7 +40,9 @@ describe "Basic RPC Function", ->
     , (req, res, next) ->
       a = req.data.a
       b = req.data.b
-      res.send a + b
+      temp = a + b
+      temp += 1 if req.options.plusone
+      res.send temp
 
     # normal api
     client.send 'add', {a: 1, b: 2}, (err, val) ->
@@ -60,10 +62,10 @@ describe 'Promise API', ->
 
   it 'end', (done) ->
 
-    cursor = client.track 'add', {a: 1, b: 2}
+    cursor = client.track 'add', {a: 1, b: 2}, {plusone: true}
     assert cursor.val is null
     cursor.end (val) ->
-      assert val is 3
+      assert val is 4
       assert cursor.val is val
       done()
 

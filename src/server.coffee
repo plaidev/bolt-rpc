@@ -61,12 +61,12 @@ class StackServer
 
     @pres.push {method, options} for method in methods
 
-  get_namespace: (path) ->
+  get_namespace: (path, req) ->
     return '_'
 
   track: (ns, data) ->
 
-    @server.channel.emit ns + '.' + @server.sub_name_space + '_track', data
+    @server.channel.emit ns + '_track', data
 
   use: ->
 
@@ -100,7 +100,13 @@ class StackServer
 
     _methods = @pres.concat(@methods[path])
 
-    _m = (data, next, socket) ->
+    _m = (data, options, next, socket) ->
+
+      # swaps
+      if 'function' is typeof options
+        socket = next
+        next = options
+        options = {}
 
       req = copy(socket.request)
 
@@ -110,6 +116,7 @@ class StackServer
 
       req.body = req.data = data
       req.path = path
+      req.options = options ? {}
 
       res = new Response()
 
@@ -118,25 +125,24 @@ class StackServer
       track = false
 
       async.eachSeries _methods, ({method, options}, cb) ->
+
         res._cb = cb
         track = true if options.track
         method(req, res, cb, socket)
+
       , (err, val) ->
+
         err = null if err is FORCE_STOP
         err = {message: err.message} if err instanceof Error
-        ns = self.get_namespace(path)
-        self.track.call(self, ns, res.val) if track
+
+        if track
+          ns = self.get_namespace(path, req)
+          self.track.call(self, ns, res.val)
+
         if req.__ends__
           req.__ends__.map (end) -> end()
+
         next err, res.val
-        # if err?
-        #   async.eachSeries self.posts, ({method, options}, cb) ->
-        #     res._cb = cb
-        #     method err, req, res, cb
-        #   , (_err, _val) ->
-        #     next err, res.val
-        # else
-        #   next null, res.val
 
     @server.set path, _m
 
