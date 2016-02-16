@@ -25,8 +25,6 @@ class StackServer
 
     @pres = []
 
-    # @posts = []
-
     @methods = {}
 
   extend: (baseServer) ->
@@ -35,8 +33,6 @@ class StackServer
 
     @pres = baseServer.pres.concat @pres
 
-    # @posts = baseServer.posts.concat @posts
-
     methods = {}
 
     methods[name] = method for name, method of baseServer.methods
@@ -44,6 +40,8 @@ class StackServer
     methods[name] = method for name, method of @methods
 
     @methods = methods
+
+    @_error = null
 
   setupServer: (@io, options={}) ->
 
@@ -68,6 +66,8 @@ class StackServer
 
     @server.channel.emit ns + '_track', data
 
+  error: (@_error) ->
+
   use: ->
 
     args = [].slice.call(arguments)
@@ -80,7 +80,6 @@ class StackServer
     else
       path = null
       methods = []
-      # methods = @posts
 
     if not (args[0] instanceof Function)
       options = args[0]
@@ -132,15 +131,24 @@ class StackServer
 
       , (err, val) ->
 
-        err = null if err is FORCE_STOP
-        err = {message: err.message} if err instanceof Error
-
         if track
           ns = self.get_namespace(path, req)
           self.track.call(self, ns, res.val)
 
         if req.__ends__
           req.__ends__.map (end) -> end()
+
+        err = null if err is FORCE_STOP
+
+        # custom error handling
+        if err instanceof Error
+          if @_error
+            @_error err, req, res, (err) ->
+              err = {message: err.message} if err instanceof Error
+              next err, res.val
+            return
+
+          err = {message: err.message}
 
         next err, res.val
 
