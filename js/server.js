@@ -58,7 +58,8 @@
         method = _ref1[name];
         methods[name] = method;
       }
-      return this.methods = methods;
+      this.methods = methods;
+      return this._error = null;
     };
 
     StackServer.prototype.setupServer = function(io, options) {
@@ -98,6 +99,10 @@
 
     StackServer.prototype.track = function(ns, data) {
       return this.server.channel.emit(ns + '_track', data);
+    };
+
+    StackServer.prototype.error = function(_error) {
+      this._error = _error;
     };
 
     StackServer.prototype.use = function() {
@@ -169,14 +174,6 @@
           return method(req, res, cb, socket);
         }, function(err, val) {
           var ns;
-          if (err === FORCE_STOP) {
-            err = null;
-          }
-          if (err instanceof Error) {
-            err = {
-              message: err.message
-            };
-          }
           if (track) {
             ns = self.get_namespace(path, req);
             self.track.call(self, ns, res.val);
@@ -185,6 +182,25 @@
             req.__ends__.map(function(end) {
               return end();
             });
+          }
+          if (err === FORCE_STOP) {
+            err = null;
+          }
+          if (err instanceof Error) {
+            if (this._error) {
+              this._error(err, req, res, function(err) {
+                if (err instanceof Error) {
+                  err = {
+                    message: err.message
+                  };
+                }
+                return next(err, res.val);
+              });
+              return;
+            }
+            err = {
+              message: err.message
+            };
           }
           return next(err, res.val);
         });

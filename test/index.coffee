@@ -52,11 +52,18 @@ describe "Basic RPC Function", ->
       assert validate.called
       done()
 
-    # heavy task. 1sec
-    server.use 'heavyTask', (req, res, next) ->
-      setTimeout ->
-        res.send req.body
-      , 200
+  it 'custom error handling', (done) ->
+
+    server.use 'customerror', (req, res, next) ->
+      next new Error 'custom error'
+
+    server.error (err, req, res, next) ->
+      assert err.message is 'custom error'
+      next err
+
+    client.send 'customerror', {}, (err, val) ->
+      assert err.message is 'custom error'
+      done()
 
 describe 'Promise API', ->
 
@@ -107,6 +114,15 @@ describe 'Promise API', ->
     cursor.end (val) ->
       assert val is 5
       done()
+
+  it 'create heavy task server', (done) ->
+    # heavy task. 1sec
+    server.use 'heavyTask', (req, res, next) ->
+      setTimeout ->
+        res.send req.body
+      , 200
+
+    done()
 
   it 'update is reject concurrent calls.', (done) ->
     callCount = 0

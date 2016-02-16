@@ -25,25 +25,25 @@
   },
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
-    "async": "^0.9.0",
+    "async": "0.9.0",
     "minimum-rpc": "*",
     "shallow-copy": "0.0.1",
-    "component-emitter": "~1.2.0"
+    "component-emitter": "1.2.0"
   },
   "devDependencies": {
+    "browserify": "13.0.0",
+    "coffee-script": "1.8.0",
+    "coffeeify": "2.0.1",
+    "component": "0.19.9",
+    "grunt": "0.4.5",
+    "grunt-cli": "0.1.13",
+    "grunt-contrib-coffee": "0.12.0",
+    "grunt-contrib-watch": "0.6.1",
+    "grunt-shell": "1.1.1",
+    "lodash": "2.4.1",
     "mocha": "2.2.5",
-    "component": "^0.19.9",
-    "grunt": "~0.4.2",
-    "grunt-cli": "^0.1.13",
-    "grunt-contrib-coffee": "~0.8.0",
-    "coffee-script": "^1.8.0",
-    "grunt": "^0.4.5",
-    "grunt-contrib-coffee": "^0.12.0",
-    "grunt-contrib-watch": "^0.6.1",
-    "grunt-shell": "^1.1.1",
-    "lodash": "^2.4.1",
-    "sinon": "^1.11.1",
-    "socket.io": "^1.2.0",
-    "socket.io-client": "^1.2.0"
+    "sinon": "1.11.1",
+    "socket.io": "1.2.0",
+    "socket.io-client": "1.2.0"
   }
 }
