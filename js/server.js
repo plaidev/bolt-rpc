@@ -187,8 +187,8 @@
             err = null;
           }
           if (err instanceof Error) {
-            if (this._error) {
-              this._error(err, req, res, function(err) {
+            if (self._error) {
+              self._error(err, req, res, function(err) {
                 if (err instanceof Error) {
                   err = {
                     message: err.message
