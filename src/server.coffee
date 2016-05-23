@@ -142,8 +142,8 @@ class StackServer
 
         # custom error handling
         if err instanceof Error
-          if @_error
-            @_error err, req, res, (err) ->
+          if self._error
+            self._error err, req, res, (err) ->
               err = {message: err.message} if err instanceof Error
               next err, res.val
             return

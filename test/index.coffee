@@ -54,15 +54,21 @@ describe "Basic RPC Function", ->
 
   it 'custom error handling', (done) ->
 
+    success_catch_error = false
+
     server.use 'customerror', (req, res, next) ->
       next new Error 'custom error'
 
     server.error (err, req, res, next) ->
       assert err.message is 'custom error'
+      success_catch_error = true
       next err
 
     client.send 'customerror', {}, (err, val) ->
       assert err.message is 'custom error'
+      assert success_catch_error is true
+      # delete error handler
+      server.error null
       done()
 
 describe 'Promise API', ->
