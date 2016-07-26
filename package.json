@@ -26,7 +26,7 @@
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
     "async": "0.9.0",
-    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#v1.1.0",
+    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#87258a072490523ef04ddfa82fc35c01993ee04e",
     "shallow-copy": "0.0.1",
     "component-emitter": "1.2.0"
   },
