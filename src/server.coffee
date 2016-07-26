@@ -151,6 +151,8 @@ class StackServer
 
         next err, res.val
 
+    # minimum-rpcのデフォルトsub name spaceに対して追加している
+    # trackイベントはsub name spaceを使うが、メソッドの実行自体はdefault sub name spaceを使う
     @server.set path, _m
 
 
