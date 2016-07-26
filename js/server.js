@@ -99,15 +99,16 @@
       return '__';
     };
 
-    StackServer.prototype.track = function(path, data, sub_name_space) {
-      if (sub_name_space == null) {
-        sub_name_space = '__';
+    StackServer.prototype.track = function(path, data, track_name_space) {
+      if (track_name_space == null) {
+        track_name_space = '__';
       }
-      return this.server.channel.to(sub_name_space).emit(sub_name_space + '.' + path + '_track', data);
+      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + path + '_track', data);
     };
 
     StackServer.prototype.error = function(_error) {
       this._error = _error;
+      return this._error;
     };
 
     StackServer.prototype.use = function() {

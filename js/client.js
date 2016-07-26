@@ -1,7 +1,8 @@
 (function() {
   var Client, Cursor, Emitter, TrackClient, TrackCursor, buildChain, __swap_options_and_cb,
     __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
 
   try {
     Emitter = require('component-emitter');
@@ -30,7 +31,7 @@
     __extends(Cursor, _super);
 
     function Cursor(method, data, options, cb, client) {
-      var _ref;
+      var sub_name_space, track_name_space, track_path, _ref, _ref1;
       this.method = method;
       this.data = data;
       this.options = options;
@@ -46,9 +47,15 @@
       this.mdls = [];
       this.calling = false;
       this.updateRequest = false;
-      this.sub_name_space = this.options.sub_name_space || '__';
       if ((_ref = this.options) != null ? _ref.track : void 0) {
-        this.client._socket.on(this.sub_name_space + '.' + this.options.track_name + '_track', (function(_this) {
+        _ref1 = this.options, track_name_space = _ref1.track_name_space, sub_name_space = _ref1.sub_name_space, track_path = _ref1.track_path;
+        if ((track_name_space != null) && track_name_space !== '__' && track_name_space !== sub_name_space) {
+          this.client.join(track_name_space);
+        }
+        if (track_name_space == null) {
+          track_name_space = sub_name_space;
+        }
+        this.client._socket.on(track_name_space + '.' + track_path + '_track', (function(_this) {
           return function(data) {
             return _this.update(void 0, data);
           };
@@ -233,12 +240,10 @@
       return cursor;
     };
 
-    TrackClient.prototype.get = function(method, data, options, cb) {
-      var cursor, res, _ref;
-      _ref = __swap_options_and_cb({
-        options: options,
-        cb: cb
-      }), options = _ref.options, cb = _ref.cb;
+    TrackClient.prototype.get = function() {
+      var cb, cursor, data, method, options, res, _i;
+      method = arguments[0], data = arguments[1], options = 4 <= arguments.length ? __slice.call(arguments, 2, _i = arguments.length - 1) : (_i = 2, []), cb = arguments[_i++];
+      options = options[0] || {};
       res = {
         err: null,
         val: null

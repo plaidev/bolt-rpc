@@ -7,36 +7,47 @@ catch
 {Client} = require('minimum-rpc')
 
 
-__swap_options_and_cb = ({options, cb}) ->
+__swap_options_and_handler = ({options, handler}) ->
   if 'function' is typeof options
-    return {cb: options, options: {}}
-  return {cb, options}
+    return {handler: options, options: {}}
+  return {handler, options}
+
+__build_chain = (funcs) ->
+
+  _bind = (cur, next) ->
+    (err, args...) ->
+      return next err if err
+      cur args..., next
+
+  cb = null
+  next = (err, args...) -> cb err, args...
+
+  for cur in Array.prototype.concat(funcs).reverse()
+    next = _bind(cur, next)
+
+  return (args..., _cb) ->
+    cb = _cb
+    next null, args...
 
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@method, @data, @options, @cb, @client) ->
-
-    # swaps
-    if 'function' is typeof @options
-      @client = @cb
-      @cb = @options
-      @options = {}
+  constructor: (@client, @method, @data, @options={}) ->
 
     @val = null
     @err = null
-    @mdls = []
     @calling = false
     @updateRequest = false
 
-    @sub_name_space = @options.sub_name_space or '__'
-
-    # activate tracking
-    if @options?.track
-
-      @client._socket.on @sub_name_space + '.' + @options.track_name + '_track', (data) =>
-
-        @update(undefined, data)
+    # @pres and @posts are async methods
+    # @pres -> <client.send> -> @mdls -> @postsの順に実行
+    @mdls = []
+    @_pres = []
+    @_posts = []
+    @_preMethods = (data, context, next) ->
+      next null, data, context
+    @_postMethods = (val, next) ->
+      next null, val
 
   # error handler
   error: (cb) ->
@@ -49,114 +60,135 @@ class Cursor extends Emitter
     return @
 
   # querying
-  update: (_data) ->
-    @data = _data if _data isnt undefined
-    return if not @data?
+  update: (data, context) ->
+    # update query data
+    @data = data if data isnt undefined
+    return if @data is undefined
 
+    # reject if now calling, but keep data and request.
     if @calling
       @updateRequest = true
       return @
 
     @calling = true
-    @updateRequest = false
-    @client.send @method, @data, @options, (err, val) =>
-      @calling = false
+
+    @_query_with_middlewares @data, context, (err, val) =>
+
+      # update results
       @err = err or null
       @val = val or null
+
+      @calling = false
+
       if err
         @emit 'error', err
       else
-        val = mdl(val) for mdl in @mdls
         @emit 'end', val
 
-      @cb(err, val) if @cb
-      @update() if @updateRequest
+      # update more once if requested
+      if @updateRequest
+        @updateRequest = false
+        setTimeout =>
+          @update()
+        , 0
 
-    return @
+  _query_with_middlewares: (data, context, cb) ->
 
-  # middlewares
+    @_preMethods data, context, (err, data) =>
+      return cb err if err
+
+      @client.send @method, data, @options, (err, val) =>
+        return cb err if err
+
+        try
+          val = mdl(val) for mdl in @mdls
+        catch e
+          return cb err
+
+        @_postMethods val, cb
+
+  # sync middlewares
   map: (mdl) ->
     @mdls.push(mdl)
+
+  pre: (func) ->
+    @_pres.push func
+    @_preMethods = __build_chain(@_pres)
     return @
 
-buildChain = (funcs, cb) ->
-  err = null
-  val = undefined
-  _bind = (cur, next) ->
-    (_err, _val) ->
-      err = _err if _err
-      val = _val if _val
-      cur err, val, next
-  next = (err, val, next) ->
-    cb err, val if cb
-  for cur in Array.prototype.concat(funcs).reverse()
-    next = _bind(cur, next)
-  next
+  post: (func) ->
+    @_posts.push func
+    @_postMethods = __build_chain(@_posts)
+    return @
+
 
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  constructor: (method, data, options, cb, client) ->
+  # options.name_space
+  # options.sub_name_space
+  # options.track_name_space
+  # options.track_path
+  constructor: (client, method, data, options, handler) ->
 
     # swaps
-    if 'function' is typeof options
-      client = cb
-      cb = options
-      options = {}
+    {options, handler} = __swap_options_and_handler {options, handler}
 
-    @pres = []
-    @posts = []
-    @tracking = true
+    # enable update by track
+    @tracking = false
 
-    _cb = null
-    if cb?
-      _cb = (err, val) =>
-        next = buildChain(@posts, cb)
-        next err, val
+    super(client, method, data, options)
 
-    super(method, data, options, _cb, client)
+    if handler
+      @on 'error', (err) ->
+        handler err
+      @on 'end', (val) ->
+        handler null, val
 
-  pre: (func) ->
-    @pres.push func
-    return @
+    # activate tracking
+    sub_name_space = @client.sub_name_space
+    {track_name_space, track_path} = @options
 
-  post: (func) ->
-    @posts.push func
-    return @
+    if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
+      @client.join track_name_space
+
+    track_name_space ?= sub_name_space or '__'
+    track_path ?= method
+
+    @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
+      return if @tracking is false
+
+      @update undefined, trackContext
 
   track: (flag) ->
+    old = @tracking
     @tracking = flag
+    if not old and @tracking
+      @update()
+    return @
 
-  update: (_data, trackContext) ->
-    return super _data if trackContext is undefined
-    return if @tracking is false
-
-    next = buildChain @pres, (err, trackContext) =>
-      return if err
-      super _data
-    next(null, trackContext)
 
 # client class
 class TrackClient extends Client
 
-  constructor: (io_or_socket, options) ->
+  constructor: (io_or_socket, options={}) ->
+    {track_name_space} = options
+    @default_track_name_space = track_name_space if track_name_space?
+
     super io_or_socket, options
 
-  # track api which return cursor obj.
-  track: (method, data=null, options=null, cb=null) ->
+  # track api which return cursor.
+  track: (method, data=null, options={}, handler=null) ->
 
-    {options, cb} = __swap_options_and_cb {options, cb}
+    {options, handler} = __swap_options_and_handler {options, handler}
+    options.track_name_space ?= @default_track_name_space if @default_track_name_space?
 
-    cursor = new TrackCursor(method, data, options, cb, @)
-
-    cursor.update()
+    cursor = new TrackCursor(@, method, data, options, handler)
 
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options, cb) ->
-
-    {options, cb} = __swap_options_and_cb {options, cb}
+  get: (method, data, options) ->
 
     res = {
       err: null
@@ -166,6 +198,8 @@ class TrackClient extends Client
     cursor = @track method, data, options, (err, val) ->
       res.err = err
       res.val = val
+
+    cursor.track true
 
     return res
 
