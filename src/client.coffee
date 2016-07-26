@@ -29,7 +29,7 @@ class Cursor extends Emitter
     @calling = false
     @updateRequest = false
 
-    @sub_name_space = @options.sub_name_space or '__'
+    @sub_name_space = @options?.sub_name_space or '__'
 
     # activate tracking
     if @options?.track

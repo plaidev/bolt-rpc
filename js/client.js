@@ -30,7 +30,7 @@
     __extends(Cursor, _super);
 
     function Cursor(method, data, options, cb, client) {
-      var _ref;
+      var _ref, _ref1;
       this.method = method;
       this.data = data;
       this.options = options;
@@ -46,8 +46,8 @@
       this.mdls = [];
       this.calling = false;
       this.updateRequest = false;
-      this.sub_name_space = this.options.sub_name_space || '__';
-      if ((_ref = this.options) != null ? _ref.track : void 0) {
+      this.sub_name_space = ((_ref = this.options) != null ? _ref.sub_name_space : void 0) || '__';
+      if ((_ref1 = this.options) != null ? _ref1.track : void 0) {
         this.client._socket.on(this.sub_name_space + '.' + this.options.track_name + '_track', (function(_this) {
           return function(data) {
             return _this.update(void 0, data);
