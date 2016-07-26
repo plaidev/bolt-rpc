@@ -29,12 +29,16 @@ class Cursor extends Emitter
     @calling = false
     @updateRequest = false
 
-    @sub_name_space = @options?.sub_name_space or '__'
-
     # activate tracking
     if @options?.track
+      {track_name_space, sub_name_space, track_path} = @options
 
-      @client._socket.on @sub_name_space + '.' + @options.track_name + '_track', (data) =>
+      if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
+        @client.join track_name_space
+
+      track_name_space ?= sub_name_space
+
+      @client._socket.on track_name_space + '.' + track_path + '_track', (data) =>
 
         @update(undefined, data)
 
@@ -154,9 +158,9 @@ class TrackClient extends Client
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options, cb) ->
+  get: (method, data, options..., cb) ->
 
-    {options, cb} = __swap_options_and_cb {options, cb}
+    options = options[0] or {}
 
     res = {
       err: null

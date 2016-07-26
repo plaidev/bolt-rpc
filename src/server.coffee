@@ -62,11 +62,12 @@ class StackServer
   get_sub_name_space: (path, req) ->
     return '__'
 
-  track: (path, data, sub_name_space='__') ->
+  track: (path, data, track_name_space='__') ->
 
-    @server.channel.to(sub_name_space).emit sub_name_space + '.' + path + '_track', data
+    @server.channel.to(track_name_space).emit track_name_space + '.' + path + '_track', data
 
   error: (@_error) ->
+    return @_error
 
   use: (args...) ->
 
