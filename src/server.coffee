@@ -51,26 +51,24 @@ class StackServer
 
       @_update(path)
 
-  pre: () ->
+  pre: (args...) ->
 
-    methods = [].slice.call(arguments, 0)
+    methods = args
 
     options = {}
 
     @pres.push {method, options} for method in methods
 
-  get_namespace: (path, req) ->
-    return '_'
+  get_sub_name_space: (path, req) ->
+    return '__'
 
-  track: (ns, data) ->
+  track: (path, data, sub_name_space='__') ->
 
-    @server.channel.emit ns + '_track', data
+    @server.channel.to(sub_name_space).emit sub_name_space + '.' + path + '_track', data
 
   error: (@_error) ->
 
-  use: ->
-
-    args = [].slice.call(arguments)
+  use: (args...) ->
 
     if typeof(args[0]) is 'string' or args[0] instanceof String
       path = args[0]
@@ -132,8 +130,9 @@ class StackServer
       , (err, val) ->
 
         if track
-          ns = self.get_namespace(path, req)
-          self.track.call(self, ns, res.val)
+          sub_name_space = self.get_sub_name_space(path, req)
+          moduleName = path.split('.')[0]
+          self.track.call(self, moduleName, res.val, sub_name_space)
 
         if req.__ends__
           req.__ends__.map (end) -> end()

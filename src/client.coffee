@@ -29,12 +29,12 @@ class Cursor extends Emitter
     @calling = false
     @updateRequest = false
 
+    @sub_name_space = @options.sub_name_space or '__'
+
     # activate tracking
     if @options?.track
 
-      track_namespace = @options.track_namespace || '_'
-
-      @client._socket.on track_namespace + '_track', (data) =>
+      @client._socket.on @sub_name_space + '.' + @options.track_name + '_track', (data) =>
 
         @update(undefined, data)
 
