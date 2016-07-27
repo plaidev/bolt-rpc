@@ -15,12 +15,12 @@ __swap_options_and_cb = ({options, cb}) ->
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@method, @data, @options, @cb, @client) ->
+  constructor: (@method, @data, @options, @handler, @client) ->
 
     # swaps
     if 'function' is typeof @options
-      @client = @cb
-      @cb = @options
+      @client = @handler
+      @handler = @options
       @options = {}
 
     @val = null
@@ -61,7 +61,7 @@ class Cursor extends Emitter
         @emit 'end', val
 
       # TODO: @cb must be sync method
-      @cb(err, val) if @cb
+      @handler(err, val) if @handler
 
       if @updateRequest
         setTimeout @update, 0
@@ -90,25 +90,25 @@ buildChain = (funcs, cb) ->
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  constructor: (method, data, options, cb, client) ->
+  constructor: (method, data, options, handler, client) ->
 
     # swaps
     if 'function' is typeof options
-      client = cb
-      cb = options
+      client = handler
+      handler = options
       options = {}
 
     @pres = []
     @posts = []
     @tracking = true
 
-    _cb = null
-    if cb?
-      _cb = (err, val) =>
-        next = buildChain(@posts, cb)
+    _handler = null
+    if handler?
+      _handler = (err, val) =>
+        next = __build_chain(@posts, handler)
         next err, val
 
-    super(method, data, options, _cb, client)
+    super(method, data, options, _handler, client)
 
     # activate tracking
     {track_name_space, sub_name_space, track_path} = @options
@@ -150,11 +150,11 @@ class TrackClient extends Client
     super io_or_socket, options
 
   # track api which return cursor obj.
-  track: (method, data=null, options=null, cb=null) ->
+  track: (method, data=null, options=null, handler=null) ->
 
-    {options, cb} = __swap_options_and_cb {options, cb}
+    {options, handler} = __swap_options_and_cb {options, handler}
 
-    cursor = new TrackCursor(method, data, options, cb, @)
+    cursor = new TrackCursor(method, data, options, handler, @)
 
     cursor.update()
 
