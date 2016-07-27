@@ -29,19 +29,6 @@ class Cursor extends Emitter
     @calling = false
     @updateRequest = false
 
-    # activate tracking
-    if @options?.track
-      {track_name_space, sub_name_space, track_path} = @options
-
-      if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
-        @client.join track_name_space
-
-      track_name_space ?= sub_name_space
-
-      @client._socket.on track_name_space + '.' + track_path + '_track', (data) =>
-
-        @update(undefined, data)
-
   # error handler
   error: (cb) ->
     @on 'error', cb
@@ -120,6 +107,19 @@ class TrackCursor extends Cursor
 
     super(method, data, options, _cb, client)
 
+    # activate tracking
+    {track_name_space, sub_name_space, track_path} = @options
+
+    if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
+      @client.join track_name_space
+
+    track_name_space ?= sub_name_space or '__'
+    track_path ?= method
+
+    @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
+
+      @_update_by_track(trackContext)
+
   pre: (func) ->
     @pres.push func
     return @
@@ -131,13 +131,13 @@ class TrackCursor extends Cursor
   track: (flag) ->
     @tracking = flag
 
-  update: (_data, trackContext) ->
-    return super _data if trackContext is undefined
+  _update_by_track: (trackContext) ->
     return if @tracking is false
 
     next = buildChain @pres, (err, trackContext) =>
       return if err
-      super _data
+      @update()
+
     next(null, trackContext)
 
 # client class
