@@ -60,8 +60,11 @@ class Cursor extends Emitter
         val = mdl(val) for mdl in @mdls
         @emit 'end', val
 
+      # TODO: @cb must be sync method
       @cb(err, val) if @cb
-      @update() if @updateRequest
+
+      if @updateRequest
+        setTimeout @update, 0
 
     return @
 
