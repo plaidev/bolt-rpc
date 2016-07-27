@@ -59,12 +59,15 @@ class StackServer
 
     @pres.push {method, options} for method in methods
 
-  get_sub_name_space: (path, req) ->
+  get_track_name_space: (path, req) ->
     return '__'
 
-  track: (path, data, track_name_space='__') ->
+  get_track_path: (path, req) ->
+    return path
 
-    @server.channel.to(track_name_space).emit track_name_space + '.' + path + '_track', data
+  track: (track_path, data, track_name_space='__') ->
+
+    @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', data
 
   error: (@_error) ->
     return @_error
@@ -131,9 +134,9 @@ class StackServer
       , (err, val) ->
 
         if track
-          sub_name_space = self.get_sub_name_space(path, req)
-          moduleName = path.split('.')[0]
-          self.track.call(self, moduleName, res.val, sub_name_space)
+          track_name_space = self.get_track_name_space(path, req)
+          track_path = self.get_track_path(path, req)
+          self.track.call(self, track_path, res.val, track_name_space)
 
         if req.__ends__
           req.__ends__.map (end) -> end()
