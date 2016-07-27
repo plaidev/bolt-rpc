@@ -12,6 +12,21 @@ __swap_options_and_cb = ({options, cb}) ->
     return {cb: options, options: {}}
   return {cb, options}
 
+__build_chain = (funcs, cb) ->
+  err = null
+  val = undefined
+  _bind = (cur, next) ->
+    (_err, _val) ->
+      err = _err if _err
+      val = _val if _val
+      cur err, val, next
+  next = (err, val, next) ->
+    cb err, val if cb
+  for cur in Array.prototype.concat(funcs).reverse()
+    next = _bind(cur, next)
+  next
+
+
 # cursor class
 class Cursor extends Emitter
 
@@ -73,27 +88,13 @@ class Cursor extends Emitter
     @mdls.push(mdl)
     return @
 
-buildChain = (funcs, cb) ->
-  err = null
-  val = undefined
-  _bind = (cur, next) ->
-    (_err, _val) ->
-      err = _err if _err
-      val = _val if _val
-      cur err, val, next
-  next = (err, val, next) ->
-    cb err, val if cb
-  for cur in Array.prototype.concat(funcs).reverse()
-    next = _bind(cur, next)
-  next
-
 # cursor with track filters
 class TrackCursor extends Cursor
 
   constructor: (method, data, options, handler, client) ->
 
     # swaps
-    if 'function' is typeof options
+    if typeof options is 'function'
       client = handler
       handler = options
       options = {}
@@ -133,11 +134,12 @@ class TrackCursor extends Cursor
 
   track: (flag) ->
     @tracking = flag
+    return @
 
   _update_by_track: (trackContext) ->
     return if @tracking is false
 
-    next = buildChain @pres, (err, trackContext) =>
+    next = __build_chain @pres, (err, trackContext) =>
       return if err
       @update()
 
@@ -161,9 +163,7 @@ class TrackClient extends Client
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options..., cb) ->
-
-    options = options[0] or {}
+  get: (method, data, options...) ->
 
     res = {
       err: null
