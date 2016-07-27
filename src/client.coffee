@@ -99,12 +99,19 @@ class TrackCursor extends Cursor
       handler = options
       options = {}
 
+    # enable update by track
+    @tracking = true
+
+    # @pres and @posts are async methods
+    # @pres -> <client.send> -> @mdls -> (@emit 'end') -> @posts -> @handlerの順に実行
+    # FIXME: presはtrackからupdateされるケースでしか実行されない
+    # FIXME: postsはendイベントで飛ぶデータに掛かっていない
     @pres = []
     @posts = []
-    @tracking = true
 
     _handler = null
     if handler?
+      # FIXME: handlerがなくてもpostsは実行されるべき?
       _handler = (err, val) =>
         next = __build_chain(@posts, handler)
         next err, val
