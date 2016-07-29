@@ -322,7 +322,7 @@ describe 'advanced', ->
           assert obj.val.num is 1
           assert objOther.val.num is 0
           done()
-        , 100
+        , 200
 
       it 'track other sub-namespace', (done) ->
         num++
@@ -331,7 +331,7 @@ describe 'advanced', ->
           assert obj.val.num is 1
           assert objOther.val.num is 2
           done()
-        , 100
+        , 200
 
       it 'track other track-namespace', (done) ->
         num++
@@ -344,7 +344,7 @@ describe 'advanced', ->
           assert objTrackNS.val.ns is 'default'
           assert objTrackNS.val.num is 3
           done()
-        , 100
+        , 200
 
   describe 'extend', ->
 
