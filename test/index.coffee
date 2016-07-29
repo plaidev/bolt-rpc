@@ -156,16 +156,16 @@ describe 'Promise API', ->
       server.track 'add3', {}
     , 100
 
-  it 'post', (done) ->
-    cursor = client.track 'add', {a: 1, b: 2}
-    cursor.track true
-    cursor.post (val, next) ->
-      next null, val * 2
-    cursor.post (val, next) ->
-      next null, val - 1
-    cursor.end (val) ->
-      assert val is 5
-      done()
+  # it 'post', (done) ->
+  #   cursor = client.track 'add', {a: 1, b: 2}
+  #   cursor.track true
+  #   cursor.post (val, next) ->
+  #     next null, val * 2
+  #   cursor.post (val, next) ->
+  #     next null, val - 1
+  #   cursor.end (val) ->
+  #     assert val is 5
+  #     done()
 
   it 'create heavy task server', (done) ->
     # heavy task. 1sec
@@ -254,8 +254,6 @@ describe 'Promise API', ->
       server.track 'addOther', {}, 'other'
     , 200
 
-
-
 describe 'advanced', ->
 
   describe 'namespace', ->
@@ -281,142 +279,142 @@ describe 'advanced', ->
         assert err
         done()
 
-  describe 'sub namespace', ->
-    clientOther = null
+  # describe 'sub namespace', ->
+  #   clientOther = null
 
-    before ->
-      # client
-      clientOther = new Client io_for_client, {url: 'http://localhost:2000', sub_name_space: 'other'}
+  #   before ->
+  #     # client
+  #     clientOther = new Client io_for_client, {url: 'http://localhost:2000', sub_name_space: 'other'}
 
-      server.ns('other').use 'method', (req, res) ->
-        res.json {success: true}
+  #     server.ns('other').use 'method', (req, res) ->
+  #       res.json {success: true}
 
-    it 'other sub-namespace method callable by sub-namespace client', (done) ->
-      clientOther.send 'method', {}, (err, val) ->
-        assert val.success
-        done()
+  #   it 'other sub-namespace method callable by sub-namespace client', (done) ->
+  #     clientOther.send 'method', {}, (err, val) ->
+  #       assert val.success
+  #       done()
 
-    it 'other sub-namespace method not callable by default sub-namespace client', (done) ->
-      client.send 'method', {}, (err, val) ->
-        assert err
-        done()
+  #   it 'other sub-namespace method not callable by default sub-namespace client', (done) ->
+  #     client.send 'method', {}, (err, val) ->
+  #       assert err
+  #       done()
 
-    describe 'track event separate by sub-namespace(or track-namespace)', ->
-      num = 0
-      obj = {}
-      objOther = {}
-      objTrackNS = {}
+    # describe 'track event separate by sub-namespace(or track-namespace)', ->
+    #   num = 0
+    #   obj = {}
+    #   objOther = {}
+    #   objTrackNS = {}
 
-      before (done) ->
-        server.use 'count', (req, res) ->
-          res.json {ns: 'default', num}
+    #   before (done) ->
+    #     server.use 'count', (req, res) ->
+    #       res.json {ns: 'default', num}
 
-        server.ns('other').use 'count', (req, res) ->
-          res.json {ns: 'other', num}
+    #     server.ns('other').use 'count', (req, res) ->
+    #       res.json {ns: 'other', num}
 
-        obj = client.get 'count', {}
-        objOther = clientOther.get 'count', {}
-        objTrackNS = client.get 'count', {}, {track_name_space: 'other'}
+    #     obj = client.get 'count', {}
+    #     objOther = clientOther.get 'count', {}
+    #     objTrackNS = client.get 'count', {}, {track_name_space: 'other'}
 
-        done()
+    #     done()
 
-      it 'track default sub-namespace', (done) ->
-        num++
-        server.track 'count', {}
-        setTimeout ->
-          assert obj.val.num is 1
-          assert objOther.val.num is 0
-          done()
-        , 100
+    #   it 'track default sub-namespace', (done) ->
+    #     num++
+    #     server.track 'count', {}
+    #     setTimeout ->
+    #       assert obj.val.num is 1
+    #       assert objOther.val.num is 0
+    #       done()
+    #     , 100
 
-      it 'track other sub-namespace', (done) ->
-        num++
-        server.track 'count', {test: 'b'}, 'other'
-        setTimeout ->
-          assert obj.val.num is 1
-          assert objOther.val.num is 2
-          done()
-        , 100
+    #   it 'track other sub-namespace', (done) ->
+    #     num++
+    #     server.track 'count', {test: 'b'}, 'other'
+    #     setTimeout ->
+    #       assert obj.val.num is 1
+    #       assert objOther.val.num is 2
+    #       done()
+    #     , 100
 
-      it 'track other track-namespace', (done) ->
-        num++
-        server.track 'count', {test: 'c'}, 'other'
-        setTimeout ->
-          assert obj.val.ns is 'default'
-          assert obj.val.num is 1
-          assert objOther.val.ns is 'other'
-          assert objOther.val.num is 3
-          assert objTrackNS.val.ns is 'default'
-          assert objTrackNS.val.num is 3
-          done()
-        , 100
+    #   it 'track other track-namespace', (done) ->
+    #     num++
+    #     server.track 'count', {test: 'c'}, 'other'
+    #     setTimeout ->
+    #       assert obj.val.ns is 'default'
+    #       assert obj.val.num is 1
+    #       assert objOther.val.ns is 'other'
+    #       assert objOther.val.num is 3
+    #       assert objTrackNS.val.ns is 'default'
+    #       assert objTrackNS.val.num is 3
+    #       done()
+    #     , 100
 
-  describe 'extend', ->
+  # describe 'extend', ->
 
-    before (done) ->
+  #   before (done) ->
 
-      pre = (req, res, next) =>
-        @_order 'pre', req.body
-        next()
+  #     pre = (req, res, next) =>
+  #       @_order 'pre', req.body
+  #       next()
 
-      middleware1 = (req, res, next) =>
-        @_order 'middleware1', req.body
-        next()
+  #     middleware1 = (req, res, next) =>
+  #       @_order 'middleware1', req.body
+  #       next()
 
-      middleware2 = (req, res, next) =>
-        @_order 'middleware2', req.body
-        next()
+  #     middleware2 = (req, res, next) =>
+  #       @_order 'middleware2', req.body
+  #       next()
 
-      middleware3 = (req, res, next) =>
-        @_order 'middleware3', req.body
-        next()
+  #     middleware3 = (req, res, next) =>
+  #       @_order 'middleware3', req.body
+  #       next()
 
-      method = (req, res) =>
-        @_order 'method', req.body
-        res.json({success: true, data: req.data})
+  #     method = (req, res) =>
+  #       @_order 'method', req.body
+  #       res.json({success: true, data: req.data})
 
-      subserver = new Server()
-      subserver.pre pre
-      subserver.use middleware2
-      subserver.use 'method', middleware3, method
+  #     subserver = new Server()
+  #     subserver.pre pre
+  #     subserver.use middleware2
+  #     subserver.use 'method', middleware3, method
 
-      # extend
-      server.use 'submodule', middleware1, subserver
+  #     # extend
+  #     server.use 'submodule', middleware1, subserver
 
-      rootserver = new Server()
-      rootserver.use 'root_method', middleware1, method
+  #     rootserver = new Server()
+  #     rootserver.use 'root_method', middleware1, method
 
-      # extend
-      server.use rootserver
+  #     # extend
+  #     server.use rootserver
 
-      done()
+  #     done()
 
-    beforeEach (done) ->
-      @sandbox = sinon.sandbox.create()
-      @_order = @sandbox.spy (name) -> name
-      done()
+  #   beforeEach (done) ->
+  #     @sandbox = sinon.sandbox.create()
+  #     @_order = @sandbox.spy (name) -> name
+  #     done()
 
-    afterEach (done) ->
-      @sandbox.restore()
-      done()
+  #   afterEach (done) ->
+  #     @sandbox.restore()
+  #     done()
 
-    it 'sub module callable', (done) ->
+    # it 'sub module callable', (done) ->
 
-      client.send 'submodule.method', {a: 'A'}, (err, val) ->
-        assert not err
-        assert val.success
-        assert val.data.a is 'A'
-        done()
+    #   client.send 'submodule.method', {a: 'A'}, (err, val) ->
+    #     assert not err
+    #     assert val.success
+    #     assert val.data.a is 'A'
+    #     done()
 
-    it 'root_method call order', (done) ->
+    # it 'root_method call order', (done) ->
 
-      client.send 'root_method', {}, (err, val) =>
-        # !: pre belongs to 'root' as well as 'submodule'.
-        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'method']
-        done()
+    #   client.send 'root_method', {}, (err, val) =>
+    #     # !: pre belongs to 'root' as well as 'submodule'.
+    #     assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'method']
+    #     done()
 
-    it 'submodule.method call order', (done) ->
+    # it 'submodule.method call order', (done) ->
 
-      client.send 'submodule.method', {}, (err, val) =>
-        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'middleware3', 'method']
-        done()
+    #   client.send 'submodule.method', {}, (err, val) =>
+    #     assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'middleware3', 'method']
+    #     done()
