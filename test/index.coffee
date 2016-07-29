@@ -127,17 +127,34 @@ describe 'Promise API', ->
     cursor.track true
 
   it 'pre', (done) ->
-    cursor = client.track 'add', {a: 1, b: 2}
-    cursor.pre (data, context, next) ->
-      data.a *= 2
-      next null, data, context
-    cursor.pre (data, context, next) ->
-      data.a += 1
-      next null, data, context
-    cursor.end (val) ->
-      assert val is 5
+    setuped = false
+    called = false
+    server.use 'add3', (req, res, next) ->
+      console.log 'add3 server'
+      a = req.data.a
+      b = req.data.b
+      res.send a + b
+    cursor = client.track 'add3', {a: 1, b: 2}, (err, val) ->
+      console.log 'add3 client'
+      return if not setuped
+      #assert val is 5
+      assert called
       done()
+    cursor.pre (data, context, next) ->
+      console.log data, context
+      called = true
+      next()
+    # cursor.pre (data, context, next) ->
+    #   data.a *= 2
+    #   next null, data, context
+    # cursor.pre (data, context, next) ->
+    #   data.a += 1
+    #   next null, data, context
     cursor.track true
+    setTimeout ->
+      setuped = true
+      server.track 'add3', {}
+    , 100
 
   it 'post', (done) ->
     cursor = client.track 'add', {a: 1, b: 2}
@@ -187,6 +204,56 @@ describe 'Promise API', ->
       check = true
       cursor.update({a: 1, b: 2})
     , 200
+
+  it 'simple track cursor, track after update.', (done) ->
+    called = 0
+
+    server.use 'add2', (req, res, next) ->
+      a = req.data.a
+      b = req.data.b
+      res.send a + b
+
+    cursor = client.track 'add2', {a: 1, b: 2}
+    cursor.end (val) ->
+      called++
+      assert called in [1, 2]
+      assert val is 3
+      if called >= 2
+        done()
+    cursor.track true
+
+    setTimeout ->
+      server.track 'add2', {}
+    , 200
+
+  it 'sub-namespaced track cursor, track after update.', (done) ->
+    clientOther = new Client io_for_client, {url: 'http://localhost:2000', track_name_space: 'other'}
+
+    setuped = false
+
+    server.use 'addOther', (req, res, next) ->
+      a = req.data.a
+      b = req.data.b
+      res.send a + b
+
+    cursor = client.track 'addOther', {a: 1, b: 2}
+    cursor.end (val) ->
+      return if not setuped
+      assert false # not called
+    cursor.track true
+
+    cursorOther = clientOther.track 'addOther', {a: 1, b: 2}
+    cursorOther.end (val) ->
+      return if not setuped
+      assert val is 3
+      done()
+    cursorOther.track true
+
+    setTimeout ->
+      setuped = true
+      server.track 'addOther', {}, 'other'
+    , 200
+
 
 
 describe 'advanced', ->
