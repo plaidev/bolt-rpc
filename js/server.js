@@ -95,15 +95,19 @@
       return _results;
     };
 
-    StackServer.prototype.get_sub_name_space = function(path, req) {
+    StackServer.prototype.get_track_name_space = function(path, req) {
       return '__';
     };
 
-    StackServer.prototype.track = function(path, data, track_name_space) {
+    StackServer.prototype.get_track_path = function(path, req) {
+      return path;
+    };
+
+    StackServer.prototype.track = function(track_path, data, track_name_space) {
       if (track_name_space == null) {
         track_name_space = '__';
       }
-      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + path + '_track', data);
+      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + track_path + '_track', data);
     };
 
     StackServer.prototype.error = function(_error) {
@@ -179,11 +183,11 @@
           }
           return method(req, res, cb, socket);
         }, function(err, val) {
-          var moduleName, sub_name_space;
+          var track_name_space, track_path;
           if (track) {
-            sub_name_space = self.get_sub_name_space(path, req);
-            moduleName = path.split('.')[0];
-            self.track.call(self, moduleName, res.val, sub_name_space);
+            track_name_space = self.get_track_name_space(path, req);
+            track_path = self.get_track_path(path, req);
+            self.track.call(self, track_path, res.val, track_name_space);
           }
           if (req.__ends__) {
             req.__ends__.map(function(end) {

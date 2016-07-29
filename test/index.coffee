@@ -130,18 +130,15 @@ describe 'Promise API', ->
     setuped = false
     called = false
     server.use 'add3', (req, res, next) ->
-      console.log 'add3 server'
       a = req.data.a
       b = req.data.b
       res.send a + b
     cursor = client.track 'add3', {a: 1, b: 2}, (err, val) ->
-      console.log 'add3 client'
       return if not setuped
       #assert val is 5
       assert called
       done()
     cursor.pre (data, context, next) ->
-      console.log data, context
       called = true
       next()
     # cursor.pre (data, context, next) ->

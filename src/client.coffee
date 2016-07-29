@@ -30,7 +30,7 @@ __build_chain = (funcs, cb) ->
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@client, @method, @data, @options={}) ->
+  constructor: (@client, @method, @data, @options={}, @handler) ->
 
     @val = null
     @err = null
@@ -116,8 +116,8 @@ class TrackCursor extends Cursor
       _handler = (err, val) =>
         next = __build_chain(@posts, handler)
         next err, val
-    super(client, method, data, options)
 
+    super(client, method, data, options, handler)
 
     # activate tracking
     sub_name_space = @client.sub_name_space
