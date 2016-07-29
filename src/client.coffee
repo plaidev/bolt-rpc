@@ -7,10 +7,10 @@ catch
 {Client} = require('minimum-rpc')
 
 
-__swap_options_and_cb = ({options, cb}) ->
+__swap_options_and_handler = ({options, handler}) ->
   if 'function' is typeof options
-    return {cb: options, options: {}}
-  return {cb, options}
+    return {handler: options, options: {}}
+  return {handler, options}
 
 __build_chain = (funcs, cb) ->
   err = null
