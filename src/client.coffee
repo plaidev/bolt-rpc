@@ -30,13 +30,7 @@ __build_chain = (funcs, cb) ->
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@method, @data, @options, @handler, @client) ->
-
-    # swaps
-    if 'function' is typeof @options
-      @client = @handler
-      @handler = @options
-      @options = {}
+  constructor: (@client, @method, @data, @options={}) ->
 
     @val = null
     @err = null
@@ -79,7 +73,10 @@ class Cursor extends Emitter
       @handler(err, val) if @handler
 
       if @updateRequest
-        setTimeout @update, 0
+        @updateRequest = false
+        setTimeout =>
+          @update()
+        , 0
 
     return @
 
@@ -91,7 +88,11 @@ class Cursor extends Emitter
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  constructor: (method, data, options, handler, client) ->
+  # options.name_space
+  # options.sub_name_space
+  # options.track_name_space
+  # options.track_path
+  constructor: (client, method, data, options, handler) ->
 
     # swaps
     if typeof options is 'function'
@@ -115,11 +116,12 @@ class TrackCursor extends Cursor
       _handler = (err, val) =>
         next = __build_chain(@posts, handler)
         next err, val
+    super(client, method, data, options)
 
-    super(method, data, options, _handler, client)
 
     # activate tracking
-    {track_name_space, sub_name_space, track_path} = @options
+    sub_name_space = @client.sub_name_space
+    {track_name_space, track_path} = @options
 
     if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
       @client.join track_name_space
@@ -155,22 +157,26 @@ class TrackCursor extends Cursor
 # client class
 class TrackClient extends Client
 
-  constructor: (io_or_socket, options) ->
+  constructor: (io_or_socket, options={}) ->
+    {track_name_space} = options
+    @default_track_name_space = track_name_space if track_name_space?
+
     super io_or_socket, options
 
-  # track api which return cursor obj.
-  track: (method, data=null, options=null, handler=null) ->
+  # track api which return cursor.
+  track: (method, data=null, options={}, handler=null) ->
 
-    {options, handler} = __swap_options_and_cb {options, handler}
+    {options, handler} = __swap_options_and_handler {options, handler}
+    options.track_name_space ?= @default_track_name_space if @default_track_name_space?
 
-    cursor = new TrackCursor(method, data, options, handler, @)
+    cursor = new TrackCursor(@, method, data, options, handler)
 
     cursor.update()
 
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options...) ->
+  get: (method, data, options) ->
 
     res = {
       err: null
