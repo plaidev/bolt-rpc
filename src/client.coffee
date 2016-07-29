@@ -12,20 +12,22 @@ __swap_options_and_handler = ({options, handler}) ->
     return {handler: options, options: {}}
   return {handler, options}
 
-__build_chain = (funcs, cb) ->
-  err = null
-  val = undefined
+__build_chain = (funcs) ->
+
   _bind = (cur, next) ->
-    (_err, _val) ->
-      err = _err if _err
-      val = _val if _val
-      cur err, val, next
-  next = (err, val, next) ->
-    cb err, val if cb
+    (err, args...) ->
+      return next err if err
+      cur args..., next
+
+  cb = null
+  next = (err, args...) -> cb err, args...
+
   for cur in Array.prototype.concat(funcs).reverse()
     next = _bind(cur, next)
-  next
 
+  return (args..., _cb) ->
+    cb = _cb
+    next null, args...
 
 # cursor class
 class Cursor extends Emitter
@@ -34,9 +36,18 @@ class Cursor extends Emitter
 
     @val = null
     @err = null
-    @mdls = []
     @calling = false
     @updateRequest = false
+
+    # @pres and @posts are async methods
+    # @pres -> <client.send> -> @mdls -> @postsの順に実行
+    @mdls = []
+    @_pres = []
+    @_posts = []
+    @_preMethods = (data, context, next) ->
+      next null, data, context
+    @_postMethods = (val, next) ->
+      next null, val
 
   # error handler
   error: (cb) ->
@@ -49,41 +60,67 @@ class Cursor extends Emitter
     return @
 
   # querying
-  update: (_data) ->
-    @data = _data if _data isnt undefined
-    return if not @data?
+  update: (data, context) ->
+    # update query data
+    @data = data if data isnt undefined
+    return if @data is undefined
 
+    # reject if now calling, but keep data and request.
     if @calling
       @updateRequest = true
       return @
 
     @calling = true
-    @updateRequest = false
-    @client.send @method, @data, @options, (err, val) =>
-      @calling = false
+
+    @_query_with_middlewares @data, context, (err, val) =>
+
+      # update results
       @err = err or null
       @val = val or null
+
+      @calling = false
+
       if err
         @emit 'error', err
       else
-        val = mdl(val) for mdl in @mdls
         @emit 'end', val
 
-      # TODO: @cb must be sync method
-      @handler(err, val) if @handler
-
+      # update more once if requested
       if @updateRequest
         @updateRequest = false
         setTimeout =>
           @update()
         , 0
 
-    return @
+  _query_with_middlewares: (data, context, cb) ->
 
-  # middlewares
+    @_preMethods data, context, (err, data) =>
+      return cb err if err
+
+      @client.send @method, data, @options, (err, val) =>
+        return cb err if err
+
+        try
+          val = mdl(val) for mdl in @mdls
+        catch e
+          return cb err
+
+        @_postMethods val, cb
+
+  # sync middlewares
   map: (mdl) ->
     @mdls.push(mdl)
+
+  pre: (func) ->
+    @_pres.push func
+    @_preMethods = __build_chain(@_pres)
     return @
+
+  post: (func) ->
+    @_posts.push func
+    @_postMethods = __build_chain(@_posts)
+    return @
+
 
 # cursor with track filters
 class TrackCursor extends Cursor
@@ -95,29 +132,18 @@ class TrackCursor extends Cursor
   constructor: (client, method, data, options, handler) ->
 
     # swaps
-    if typeof options is 'function'
-      client = handler
-      handler = options
-      options = {}
+    {options, handler} = __swap_options_and_handler {options, handler}
 
     # enable update by track
-    @tracking = true
+    @tracking = false
 
-    # @pres and @posts are async methods
-    # @pres -> <client.send> -> @mdls -> (@emit 'end') -> @posts -> @handlerの順に実行
-    # FIXME: presはtrackからupdateされるケースでしか実行されない
-    # FIXME: postsはendイベントで飛ぶデータに掛かっていない
-    @pres = []
-    @posts = []
-
-    _handler = null
-    if handler?
-      # FIXME: handlerがなくてもpostsは実行されるべき?
-      _handler = (err, val) =>
-        next = __build_chain(@posts, handler)
-        next err, val
     super(client, method, data, options)
 
+    if handler
+      @on 'error', (err) ->
+        handler err
+      @on 'end', (val) ->
+        handler null, val
 
     # activate tracking
     sub_name_space = @client.sub_name_space
@@ -130,29 +156,17 @@ class TrackCursor extends Cursor
     track_path ?= method
 
     @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
+      return if @tracking is false
 
-      @_update_by_track(trackContext)
-
-  pre: (func) ->
-    @pres.push func
-    return @
-
-  post: (func) ->
-    @posts.push func
-    return @
+      @update undefined, trackContext
 
   track: (flag) ->
+    old = @tracking
     @tracking = flag
+    if not old and @tracking
+      @update()
     return @
 
-  _update_by_track: (trackContext) ->
-    return if @tracking is false
-
-    next = __build_chain @pres, (err, trackContext) =>
-      return if err
-      @update()
-
-    next(null, trackContext)
 
 # client class
 class TrackClient extends Client
@@ -171,8 +185,6 @@ class TrackClient extends Client
 
     cursor = new TrackCursor(@, method, data, options, handler)
 
-    cursor.update()
-
     return cursor
 
   # track api which return cursor obj.
@@ -186,6 +198,8 @@ class TrackClient extends Client
     cursor = @track method, data, options, (err, val) ->
       res.err = err
       res.val = val
+
+    cursor.track true
 
     return res
 

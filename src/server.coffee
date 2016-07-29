@@ -3,6 +3,8 @@ async = require('async')
 {Server} = require('minimum-rpc')
 copy = require('shallow-copy')
 
+DEFAULT_SUB_NAME_SPACE = '__'
+
 # for stopping in async flow
 FORCE_STOP = "FORCE_STOP"
 
@@ -20,86 +22,125 @@ class Response
 class StackServer
 
   constructor: (@io=undefined, options={}) ->
+    {path_delimiter} = options
+    @path_delimiter = path_delimiter or '.'
 
-    @server = new Server(@io, {}, options) if @io?
+    @settings = {
+      DEFAULT_SUB_NAME_SPACE: {
+        pres: []
+        methodHash: {}
+      }
+    }
 
-    @pres = []
+    @init(@io, options) if @io?
 
-    @methods = {}
-
-  extend: (baseServer) ->
-
-    return @ if not baseServer?
-
-    @pres = baseServer.pres.concat @pres
-
-    methods = {}
-
-    methods[name] = method for name, method of baseServer.methods
-
-    methods[name] = method for name, method of @methods
-
-    @methods = methods
-
-    @_error = null
-
-  setupServer: (@io, options={}) ->
+  init: (@io, options={}) ->
 
     @server = new Server(@io, {}, options)
 
-    for path, methods of @methods
+    for sub_name_space, {pres, methodHash} of @settings
 
-      @_update(path)
+      for path of methodHash
 
-  pre: (args...) ->
+        @_update(sub_name_space, path)
 
-    methods = args
+  extend: (baseServer, prefix=null) ->
+    return @ if not baseServer?
 
-    options = {}
+    _assign = (self, base) =>
+      self.pres = self.pres.concat base.pres
+      for path, methods of base.methodHash
+        paths = []
+        paths.push prefix if prefix
+        paths.push path if path
+        path = paths.join(@path_delimiter)
+        self.methodHash[path] ?= []
+        self.methodHash[path] = self.methodHash[path].concat methods
 
-    @pres.push {method, options} for method in methods
+    for sub_name_space, base of baseServer.settings
+      @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+      _assign @settings[sub_name_space], base
 
-  get_track_name_space: (path, req) ->
-    return '__'
+    @_error = null
 
-  get_track_path: (path, req) ->
-    return path
+    for sub_name_space, {pres, methodHash} of @settings
 
-  track: (track_path, data, track_name_space='__') ->
+      for path of methodHash
+
+        @_update(sub_name_space, path)
+
+  track: (track_path, data, track_name_space=DEFAULT_SUB_NAME_SPACE) ->
 
     @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', data
 
   error: (@_error) ->
     return @_error
 
-  use: (args...) ->
+  ns: (sub_name_space) ->
+    return {
+      pre: (args...) =>
+        @pre {sub_name_space}, args...
+      use: (args...) =>
+        @use {sub_name_space}, args...
+    }
 
-    if typeof(args[0]) is 'string' or args[0] instanceof String
-      path = args[0]
-      @methods[path] ?= []
-      methods = @methods[path]
-      args = args[1..]
-    else
-      path = null
-      methods = []
+  pre: (args...) ->
+    sub_name_space = null
 
     if not (args[0] instanceof Function)
-      options = args[0]
+      {sub_name_space} = args[0] if args[0]
       args = args[1..]
-    else
-      options = {}
 
-    methods.push {method, options} for method in args
+    sub_name_space ?= DEFAULT_SUB_NAME_SPACE
 
-    @_update(path) if path?
+    @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+    @settings[sub_name_space].pres.push method for method in args
 
-  _update: (path) ->
+    for path in @settings[sub_name_space].methodHash
 
+      @_update(sub_name_space, path)
+
+  use: (args...) ->
+    sub_name_space = null
+    path = null
+
+    if not (args[0] instanceof StackServer) and not (args[0] instanceof Function) and not (typeof(args[0]) is 'string' or args[0] instanceof String)
+      {sub_name_space} = args[0] if args[0]
+      args = args[1..]
+
+    if typeof(args[0]) is 'string' or args[0] instanceof String
+      path = args[0] if args[0]
+      args = args[1..]
+
+    sub_name_space ?= DEFAULT_SUB_NAME_SPACE
+
+    path = '' if not path?
+
+    @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+
+    for method in args
+
+      if method instanceof StackServer
+        @extend method, path
+
+      else
+        @settings[sub_name_space].methodHash[path] ?= []
+        @settings[sub_name_space].methodHash[path].push method
+
+    @_update(sub_name_space, path)
+
+  _update: (sub_name_space, path) ->
     return if not @server?
 
     self = @
 
-    _methods = @pres.concat(@methods[path])
+    {pres, methodHash} = @settings[sub_name_space]
+    paths = path.split @path_delimiter
+
+    _methods = pres.concat(methodHash[''] or [])
+    for len in [0...paths.length]
+      _path = paths[0..len].join(@path_delimiter)
+      _methods = _methods.concat(methodHash[_path] or [])
 
     _m = (data, options, next, socket) ->
 
@@ -123,20 +164,13 @@ class StackServer
 
       series = []
 
-      track = false
-
-      async.eachSeries _methods, ({method, options}, cb) ->
+      async.eachSeries _methods, (method, cb) ->
 
         res._cb = cb
-        track = true if options.track
+
         method(req, res, cb, socket)
 
       , (err, val) ->
-
-        if track
-          track_name_space = self.get_track_name_space(path, req)
-          track_path = self.get_track_path(path, req)
-          self.track.call(self, track_path, res.val, track_name_space)
 
         if req.__ends__
           req.__ends__.map (end) -> end()
@@ -155,9 +189,11 @@ class StackServer
 
         next err, res.val
 
-    # minimum-rpcのデフォルトsub name spaceに対して追加している
-    # trackイベントはsub name spaceを使うが、メソッドの実行自体はdefault sub name spaceを使う
-    @server.set path, _m
+    @server.set path, _m, sub_name_space
+
+  # obsolete
+  setupServer: (args...) ->
+    @init args...
 
 
 module.exports = StackServer
