@@ -242,7 +242,7 @@
     TrackClient.prototype.track = function(method, data, options, handler) {
       var cursor, _ref;
       if (data == null) {
-        data = null;
+        data = {};
       }
       if (options == null) {
         options = {};
@@ -265,6 +265,12 @@
 
     TrackClient.prototype.get = function(method, data, options) {
       var cursor, res;
+      if (data == null) {
+        data = {};
+      }
+      if (options == null) {
+        options = {};
+      }
       res = {
         err: null,
         val: null

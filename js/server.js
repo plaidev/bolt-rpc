@@ -43,7 +43,8 @@
       this.settings = {
         DEFAULT_SUB_NAME_SPACE: {
           pres: [],
-          methodHash: {}
+          methodHash: {},
+          posts: []
         }
       };
       if (this.io != null) {
@@ -75,7 +76,7 @@
     };
 
     StackServer.prototype.extend = function(baseServer, prefix) {
-      var base, methodHash, path, pres, sub_name_space, _assign, _base, _ref, _ref1, _ref2, _results;
+      var base, methodHash, path, sub_name_space, _assign, _base, _ref, _ref1, _results;
       if (prefix == null) {
         prefix = null;
       }
@@ -112,7 +113,8 @@
         if ((_base = this.settings)[sub_name_space] == null) {
           _base[sub_name_space] = {
             pres: [],
-            methodHash: {}
+            methodHash: {},
+            posts: []
           };
         }
         _assign(this.settings[sub_name_space], base);
@@ -121,7 +123,7 @@
       _ref1 = this.settings;
       _results = [];
       for (sub_name_space in _ref1) {
-        _ref2 = _ref1[sub_name_space], pres = _ref2.pres, methodHash = _ref2.methodHash;
+        methodHash = _ref1[sub_name_space].methodHash;
         _results.push((function() {
           var _results1;
           _results1 = [];
@@ -185,7 +187,8 @@
       if ((_base = this.settings)[sub_name_space] == null) {
         _base[sub_name_space] = {
           pres: [],
-          methodHash: {}
+          methodHash: {},
+          posts: []
         };
       }
       for (_i = 0, _len = args.length; _i < _len; _i++) {
@@ -227,13 +230,16 @@
       if ((_base = this.settings)[sub_name_space] == null) {
         _base[sub_name_space] = {
           pres: [],
-          methodHash: {}
+          methodHash: {},
+          posts: []
         };
       }
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         method = args[_i];
         if (method instanceof StackServer) {
           this.extend(method, path);
+        } else if (method.length === 5) {
+          this.settings[sub_name_space].posts.push(method);
         } else {
           if ((_base1 = this.settings[sub_name_space].methodHash)[path] == null) {
             _base1[path] = [];
@@ -245,18 +251,19 @@
     };
 
     StackServer.prototype._update = function(sub_name_space, path) {
-      var len, methodHash, paths, pres, self, _i, _m, _methods, _path, _ref, _ref1;
+      var len, methodHash, paths, posts, pres, self, _i, _m, _methods, _path, _ref, _ref1;
       if (this.server == null) {
         return;
       }
       self = this;
-      _ref = this.settings[sub_name_space], pres = _ref.pres, methodHash = _ref.methodHash;
+      _ref = this.settings[sub_name_space], pres = _ref.pres, methodHash = _ref.methodHash, posts = _ref.posts;
       paths = path.split(this.path_delimiter);
       _methods = pres.concat(methodHash[''] || []);
       for (len = _i = 0, _ref1 = paths.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; len = 0 <= _ref1 ? ++_i : --_i) {
         _path = paths.slice(0, +len + 1 || 9e9).join(this.path_delimiter);
         _methods = _methods.concat(methodHash[_path] || []);
       }
+      _methods = _methods.concat(posts);
       _m = function(data, options, next, socket) {
         var req, res, series;
         if ('function' === typeof options) {
