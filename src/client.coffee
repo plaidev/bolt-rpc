@@ -7,36 +7,36 @@ catch
 {Client} = require('minimum-rpc')
 
 
-__swap_options_and_cb = ({options, cb}) ->
+__swap_options_and_handler = ({options, handler}) ->
   if 'function' is typeof options
-    return {cb: options, options: {}}
-  return {cb, options}
+    return {handler: options, options: {}}
+  return {handler, options}
+
+__build_chain = (funcs, cb) ->
+  err = null
+  val = undefined
+  _bind = (cur, next) ->
+    (_err, _val) ->
+      err = _err if _err
+      val = _val if _val
+      cur err, val, next
+  next = (err, val, next) ->
+    cb err, val if cb
+  for cur in Array.prototype.concat(funcs).reverse()
+    next = _bind(cur, next)
+  next
+
 
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@method, @data, @options, @cb, @client) ->
-
-    # swaps
-    if 'function' is typeof @options
-      @client = @cb
-      @cb = @options
-      @options = {}
+  constructor: (@client, @method, @data, @options={}, @handler) ->
 
     @val = null
     @err = null
     @mdls = []
     @calling = false
     @updateRequest = false
-
-    # activate tracking
-    if @options?.track
-
-      track_namespace = @options.track_namespace || '_'
-
-      @client._socket.on track_namespace + '_track', (data) =>
-
-        @update(undefined, data)
 
   # error handler
   error: (cb) ->
@@ -69,8 +69,14 @@ class Cursor extends Emitter
         val = mdl(val) for mdl in @mdls
         @emit 'end', val
 
-      @cb(err, val) if @cb
-      @update() if @updateRequest
+      # TODO: @cb must be sync method
+      @handler(err, val) if @handler
+
+      if @updateRequest
+        @updateRequest = false
+        setTimeout =>
+          @update()
+        , 0
 
     return @
 
@@ -79,42 +85,53 @@ class Cursor extends Emitter
     @mdls.push(mdl)
     return @
 
-buildChain = (funcs, cb) ->
-  err = null
-  val = undefined
-  _bind = (cur, next) ->
-    (_err, _val) ->
-      err = _err if _err
-      val = _val if _val
-      cur err, val, next
-  next = (err, val, next) ->
-    cb err, val if cb
-  for cur in Array.prototype.concat(funcs).reverse()
-    next = _bind(cur, next)
-  next
-
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  constructor: (method, data, options, cb, client) ->
+  # options.name_space
+  # options.sub_name_space
+  # options.track_name_space
+  # options.track_path
+  constructor: (client, method, data, options, handler) ->
 
     # swaps
-    if 'function' is typeof options
-      client = cb
-      cb = options
+    if typeof options is 'function'
+      client = handler
+      handler = options
       options = {}
 
-    @pres = []
-    @posts = []
+    # enable update by track
     @tracking = true
 
-    _cb = null
-    if cb?
-      _cb = (err, val) =>
-        next = buildChain(@posts, cb)
+    # @pres and @posts are async methods
+    # @pres -> <client.send> -> @mdls -> (@emit 'end') -> @posts -> @handlerの順に実行
+    # FIXME: presはtrackからupdateされるケースでしか実行されない
+    # FIXME: postsはendイベントで飛ぶデータに掛かっていない
+    @pres = []
+    @posts = []
+
+    _handler = null
+    if handler?
+      # FIXME: handlerがなくてもpostsは実行されるべき?
+      _handler = (err, val) =>
+        next = __build_chain(@posts, handler)
         next err, val
 
-    super(method, data, options, _cb, client)
+    super(client, method, data, options, handler)
+
+    # activate tracking
+    sub_name_space = @client.sub_name_space
+    {track_name_space, track_path} = @options
+
+    if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
+      @client.join track_name_space
+
+    track_name_space ?= sub_name_space or '__'
+    track_path ?= method
+
+    @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
+
+      @_update_by_track(trackContext)
 
   pre: (func) ->
     @pres.push func
@@ -126,37 +143,40 @@ class TrackCursor extends Cursor
 
   track: (flag) ->
     @tracking = flag
+    return @
 
-  update: (_data, trackContext) ->
-    return super _data if trackContext is undefined
+  _update_by_track: (trackContext) ->
     return if @tracking is false
 
-    next = buildChain @pres, (err, trackContext) =>
+    next = __build_chain @pres, (err, trackContext) =>
       return if err
-      super _data
+      @update()
+
     next(null, trackContext)
 
 # client class
 class TrackClient extends Client
 
-  constructor: (io_or_socket, options) ->
+  constructor: (io_or_socket, options={}) ->
+    {track_name_space} = options
+    @default_track_name_space = track_name_space if track_name_space?
+
     super io_or_socket, options
 
-  # track api which return cursor obj.
-  track: (method, data=null, options=null, cb=null) ->
+  # track api which return cursor.
+  track: (method, data=null, options={}, handler=null) ->
 
-    {options, cb} = __swap_options_and_cb {options, cb}
+    {options, handler} = __swap_options_and_handler {options, handler}
+    options.track_name_space ?= @default_track_name_space if @default_track_name_space?
 
-    cursor = new TrackCursor(method, data, options, cb, @)
+    cursor = new TrackCursor(@, method, data, options, handler)
 
     cursor.update()
 
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options, cb) ->
-
-    {options, cb} = __swap_options_and_cb {options, cb}
+  get: (method, data, options) ->
 
     res = {
       err: null

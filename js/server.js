@@ -1,5 +1,6 @@
 (function() {
-  var FORCE_STOP, Response, Server, StackServer, async, copy;
+  var FORCE_STOP, Response, Server, StackServer, async, copy,
+    __slice = [].slice;
 
   async = require('async');
 
@@ -79,8 +80,9 @@
     };
 
     StackServer.prototype.pre = function() {
-      var method, methods, options, _i, _len, _results;
-      methods = [].slice.call(arguments, 0);
+      var args, method, methods, options, _i, _len, _results;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      methods = args;
       options = {};
       _results = [];
       for (_i = 0, _len = methods.length; _i < _len; _i++) {
@@ -93,21 +95,29 @@
       return _results;
     };
 
-    StackServer.prototype.get_namespace = function(path, req) {
-      return '_';
+    StackServer.prototype.get_track_name_space = function(path, req) {
+      return '__';
     };
 
-    StackServer.prototype.track = function(ns, data) {
-      return this.server.channel.emit(ns + '_track', data);
+    StackServer.prototype.get_track_path = function(path, req) {
+      return path;
+    };
+
+    StackServer.prototype.track = function(track_path, data, track_name_space) {
+      if (track_name_space == null) {
+        track_name_space = '__';
+      }
+      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + track_path + '_track', data);
     };
 
     StackServer.prototype.error = function(_error) {
       this._error = _error;
+      return this._error;
     };
 
     StackServer.prototype.use = function() {
       var args, method, methods, options, path, _base, _i, _len;
-      args = [].slice.call(arguments);
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       if (typeof args[0] === 'string' || args[0] instanceof String) {
         path = args[0];
         if ((_base = this.methods)[path] == null) {
@@ -173,10 +183,11 @@
           }
           return method(req, res, cb, socket);
         }, function(err, val) {
-          var ns;
+          var track_name_space, track_path;
           if (track) {
-            ns = self.get_namespace(path, req);
-            self.track.call(self, ns, res.val);
+            track_name_space = self.get_track_name_space(path, req);
+            track_path = self.get_track_path(path, req);
+            self.track.call(self, track_path, res.val, track_name_space);
           }
           if (req.__ends__) {
             req.__ends__.map(function(end) {

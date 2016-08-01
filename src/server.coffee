@@ -51,26 +51,28 @@ class StackServer
 
       @_update(path)
 
-  pre: () ->
+  pre: (args...) ->
 
-    methods = [].slice.call(arguments, 0)
+    methods = args
 
     options = {}
 
     @pres.push {method, options} for method in methods
 
-  get_namespace: (path, req) ->
-    return '_'
+  get_track_name_space: (path, req) ->
+    return '__'
 
-  track: (ns, data) ->
+  get_track_path: (path, req) ->
+    return path
 
-    @server.channel.emit ns + '_track', data
+  track: (track_path, data, track_name_space='__') ->
+
+    @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', data
 
   error: (@_error) ->
+    return @_error
 
-  use: ->
-
-    args = [].slice.call(arguments)
+  use: (args...) ->
 
     if typeof(args[0]) is 'string' or args[0] instanceof String
       path = args[0]
@@ -132,8 +134,9 @@ class StackServer
       , (err, val) ->
 
         if track
-          ns = self.get_namespace(path, req)
-          self.track.call(self, ns, res.val)
+          track_name_space = self.get_track_name_space(path, req)
+          track_path = self.get_track_path(path, req)
+          self.track.call(self, track_path, res.val, track_name_space)
 
         if req.__ends__
           req.__ends__.map (end) -> end()
@@ -152,6 +155,8 @@ class StackServer
 
         next err, res.val
 
+    # minimum-rpcのデフォルトsub name spaceに対して追加している
+    # trackイベントはsub name spaceを使うが、メソッドの実行自体はdefault sub name spaceを使う
     @server.set path, _m
 
 
