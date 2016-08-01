@@ -29,6 +29,7 @@ class StackServer
       DEFAULT_SUB_NAME_SPACE: {
         pres: []
         methodHash: {}
+        posts: []
       }
     }
 
@@ -58,12 +59,12 @@ class StackServer
         self.methodHash[path] = self.methodHash[path].concat methods
 
     for sub_name_space, base of baseServer.settings
-      @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+      @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
       _assign @settings[sub_name_space], base
 
     @_error = null
 
-    for sub_name_space, {pres, methodHash} of @settings
+    for sub_name_space, {methodHash} of @settings
 
       for path of methodHash
 
@@ -93,7 +94,7 @@ class StackServer
 
     sub_name_space ?= DEFAULT_SUB_NAME_SPACE
 
-    @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+    @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
     @settings[sub_name_space].pres.push method for method in args
 
     for path in @settings[sub_name_space].methodHash
@@ -116,12 +117,15 @@ class StackServer
 
     path = '' if not path?
 
-    @settings[sub_name_space] ?= {pres: [], methodHash: {}}
+    @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
 
     for method in args
 
       if method instanceof StackServer
         @extend method, path
+
+      else if method.length is 5 # (err, req, res, next, socket) ->
+        @settings[sub_name_space].posts.push method
 
       else
         @settings[sub_name_space].methodHash[path] ?= []
@@ -134,13 +138,15 @@ class StackServer
 
     self = @
 
-    {pres, methodHash} = @settings[sub_name_space]
+    {pres, methodHash, posts} = @settings[sub_name_space]
     paths = path.split @path_delimiter
 
     _methods = pres.concat(methodHash[''] or [])
     for len in [0...paths.length]
       _path = paths[0..len].join(@path_delimiter)
       _methods = _methods.concat(methodHash[_path] or [])
+
+    _methods = _methods.concat posts
 
     _m = (data, options, next, socket) ->
 
