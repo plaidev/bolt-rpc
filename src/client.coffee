@@ -178,7 +178,7 @@ class TrackClient extends Client
     super io_or_socket, options
 
   # track api which return cursor.
-  track: (method, data=null, options={}, handler=null) ->
+  track: (method, data={}, options={}, handler=null) ->
 
     {options, handler} = __swap_options_and_handler {options, handler}
     options.track_name_space ?= @default_track_name_space if @default_track_name_space?
@@ -188,7 +188,7 @@ class TrackClient extends Client
     return cursor
 
   # track api which return cursor obj.
-  get: (method, data, options) ->
+  get: (method, data={}, options={}) ->
 
     res = {
       err: null
