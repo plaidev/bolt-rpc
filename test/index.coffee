@@ -313,7 +313,7 @@ describe 'advanced', ->
         objOther = clientOther.get 'count', {}
         objTrackNS = client.get 'count', {}, {track_name_space: 'other'}
 
-        done()
+        setTimeout done, 100
 
       it 'track default sub-namespace', (done) ->
         num++
