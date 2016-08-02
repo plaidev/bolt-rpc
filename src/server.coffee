@@ -102,38 +102,34 @@ class StackServer
       @_update(sub_name_space, path)
 
   use: (args...) ->
-    sub_name_space = null
-    path = null
+    sub_name_space = DEFAULT_SUB_NAME_SPACE
+    path = ''
 
-    if not (args[0] instanceof StackServer) and not (args[0] instanceof Function) and not (typeof(args[0]) is 'string' or args[0] instanceof String)
-      {sub_name_space} = args[0] if args[0]
-      args = args[1..]
+    for arg in args
 
-    if typeof(args[0]) is 'string' or args[0] instanceof String
-      path = args[0] if args[0]
-      args = args[1..]
+      if arg instanceof StackServer
+        @extend arg, path
 
-    sub_name_space ?= DEFAULT_SUB_NAME_SPACE
+      else if arg instanceof Function
 
-    path = '' if not path?
+        @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
 
-    @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
+        if method.length is 5 # (err, req, res, next, socket) ->
+          @settings[sub_name_space].posts.push method
 
-    for method in args
+        else
+          @settings[sub_name_space].methodHash[path] ?= []
+          @settings[sub_name_space].methodHash[path].push method
 
-      if method instanceof StackServer
-        @extend method, path
+        @_update(sub_name_space, path, track)
 
-      else if method.length is 5 # (err, req, res, next, socket) ->
-        @settings[sub_name_space].posts.push method
+      else if typeof(args[0]) is 'string' or args[0] instanceof String
+        path = arg
 
       else
-        @settings[sub_name_space].methodHash[path] ?= []
-        @settings[sub_name_space].methodHash[path].push method
+        sub_name_space = arg.sub_name_space if arg.sub_name_space?
 
-    @_update(sub_name_space, path)
-
-  _update: (sub_name_space, path) ->
+  _update: (sub_name_space, path, track=false) ->
     return if not @server?
 
     self = @
