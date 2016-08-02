@@ -10,13 +10,19 @@ FORCE_STOP = "FORCE_STOP"
 
 # mock response object like express
 class Response
-  constructor: (@_cb) ->
+  constructor: (@server, @options, @_cb) ->
   send: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
   json: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
+  track: (track_path, context, track_name_space) ->
+    track_path ?= @options.track_path or ''
+    context ?= {}
+    context.auto_track = true
+    track_name_space ?= @options.track_name_path or DEFAULT_SUB_NAME_SPACE
+    @server.track track_path, context, track_name_space
 
 # server which can handle middlewares like express
 class StackServer
@@ -70,9 +76,15 @@ class StackServer
 
         @_update(sub_name_space, path)
 
-  track: (track_path, data, track_name_space=DEFAULT_SUB_NAME_SPACE) ->
+  get_track_name_space: (path, req) ->
+    return '__'
 
-    @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', data
+  get_track_path: (path, req) ->
+    return path
+
+  track: (track_path, context, track_name_space=DEFAULT_SUB_NAME_SPACE) ->
+
+    @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', context
 
   error: (@_error) ->
     return @_error
@@ -102,38 +114,36 @@ class StackServer
       @_update(sub_name_space, path)
 
   use: (args...) ->
-    sub_name_space = null
-    path = null
+    sub_name_space = DEFAULT_SUB_NAME_SPACE
+    path = ''
+    track = false
 
-    if not (args[0] instanceof StackServer) and not (args[0] instanceof Function) and not (typeof(args[0]) is 'string' or args[0] instanceof String)
-      {sub_name_space} = args[0] if args[0]
-      args = args[1..]
+    for arg in args
 
-    if typeof(args[0]) is 'string' or args[0] instanceof String
-      path = args[0] if args[0]
-      args = args[1..]
+      if arg instanceof StackServer
+        @extend arg, path
 
-    sub_name_space ?= DEFAULT_SUB_NAME_SPACE
+      else if arg instanceof Function
 
-    path = '' if not path?
+        @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
 
-    @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
+        if arg.length is 5 # (err, req, res, next, socket) ->
+          @settings[sub_name_space].posts.push arg
 
-    for method in args
+        else
+          @settings[sub_name_space].methodHash[path] ?= []
+          @settings[sub_name_space].methodHash[path].push arg
 
-      if method instanceof StackServer
-        @extend method, path
+        @_update(sub_name_space, path, track)
 
-      else if method.length is 5 # (err, req, res, next, socket) ->
-        @settings[sub_name_space].posts.push method
+      else if typeof(arg) is 'string' or arg instanceof String
+        path = arg
 
       else
-        @settings[sub_name_space].methodHash[path] ?= []
-        @settings[sub_name_space].methodHash[path].push method
+        sub_name_space = arg.sub_name_space if arg.sub_name_space?
+        track = arg.track if arg.track?
 
-    @_update(sub_name_space, path)
-
-  _update: (sub_name_space, path) ->
+  _update: (sub_name_space, path, track=false) ->
     return if not @server?
 
     self = @
@@ -166,7 +176,16 @@ class StackServer
       req.path = path
       req.options = options ? {}
 
-      res = new Response()
+      responseOptions =
+        track_name_space: self.get_track_name_space(path, req)
+        track_path: self.get_track_path(path, req)
+
+      res = new Response(self, responseOptions, null)
+
+      if track and not options.auto_tracked_request
+        req.__ends__ = [] if not req.__ends__
+        req.__ends__.push ->
+          res.track()
 
       series = []
 
