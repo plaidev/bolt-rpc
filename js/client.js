@@ -1,6 +1,5 @@
 (function() {
-  var Client, Cursor, Emitter, TrackClient, TrackCursor, __build_chain, __swap_options_and_handler,
-    __slice = [].slice,
+  var Client, Cursor, Emitter, TrackClient, TrackCursor, async, __swap_options_and_handler,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -11,6 +10,8 @@
   }
 
   Client = require('minimum-rpc').Client;
+
+  async = require('async');
 
   __swap_options_and_handler = function(_arg) {
     var handler, options;
@@ -27,37 +28,6 @@
     };
   };
 
-  __build_chain = function(funcs) {
-    var cb, cur, next, _bind, _i, _len, _ref;
-    _bind = function(cur, next) {
-      return function() {
-        var args, err;
-        err = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-        if (err) {
-          return next(err);
-        }
-        return cur.apply(null, __slice.call(args).concat([next]));
-      };
-    };
-    cb = null;
-    next = function() {
-      var args, err;
-      err = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-      return cb.apply(null, [err].concat(__slice.call(args)));
-    };
-    _ref = Array.prototype.concat(funcs).reverse();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      cur = _ref[_i];
-      next = _bind(cur, next);
-    }
-    return function() {
-      var args, _cb, _j;
-      args = 2 <= arguments.length ? __slice.call(arguments, 0, _j = arguments.length - 1) : (_j = 0, []), _cb = arguments[_j++];
-      cb = _cb;
-      return next.apply(null, [null].concat(__slice.call(args)));
-    };
-  };
-
   Cursor = (function(_super) {
     __extends(Cursor, _super);
 
@@ -70,15 +40,9 @@
       this.err = null;
       this.calling = false;
       this.updateRequest = false;
-      this.mdls = [];
+      this._mdls = [];
       this._pres = [];
       this._posts = [];
-      this._preMethods = function(data, context, next) {
-        return next(null, data, context);
-      };
-      this._postMethods = function(val, next) {
-        return next(null, val);
-      };
     }
 
     Cursor.prototype.error = function(cb) {
@@ -123,8 +87,24 @@
       })(this));
     };
 
+    Cursor.prototype._pre_methods = function(data, context, cb) {
+      return async.waterfall([
+        function(next) {
+          return next(null, data, context);
+        }
+      ].concat(this._pres), cb);
+    };
+
+    Cursor.prototype._post_methods = function(val, cb) {
+      return async.waterfall([
+        function(next) {
+          return next(null, val);
+        }
+      ].concat(this._posts), cb);
+    };
+
     Cursor.prototype._query_with_middlewares = function(data, context, cb) {
-      return this._preMethods(data, context, (function(_this) {
+      return this._pre_methods(data, context, (function(_this) {
         return function(err, data) {
           if (err) {
             return cb(err);
@@ -135,7 +115,7 @@
               return cb(err);
             }
             try {
-              _ref = _this.mdls;
+              _ref = _this._mdls;
               for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                 mdl = _ref[_i];
                 val = mdl(val);
@@ -144,25 +124,23 @@
               e = _error;
               return cb(err);
             }
-            return _this._postMethods(val, cb);
+            return _this._post_methods(val, cb);
           });
         };
       })(this));
     };
 
     Cursor.prototype.map = function(mdl) {
-      return this.mdls.push(mdl);
+      return this._mdls.push(mdl);
     };
 
     Cursor.prototype.pre = function(func) {
       this._pres.push(func);
-      this._preMethods = __build_chain(this._pres);
       return this;
     };
 
     Cursor.prototype.post = function(func) {
       this._posts.push(func);
-      this._postMethods = __build_chain(this._posts);
       return this;
     };
 

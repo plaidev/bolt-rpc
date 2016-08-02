@@ -5,29 +5,13 @@ catch
   Emitter = require('events').EventEmitter
 
 {Client} = require('minimum-rpc')
-
+async = require 'async'
 
 __swap_options_and_handler = ({options, handler}) ->
   if 'function' is typeof options
     return {handler: options, options: {}}
   return {handler, options}
 
-__build_chain = (funcs) ->
-
-  _bind = (cur, next) ->
-    (err, args...) ->
-      return next err if err
-      cur args..., next
-
-  cb = null
-  next = (err, args...) -> cb err, args...
-
-  for cur in Array.prototype.concat(funcs).reverse()
-    next = _bind(cur, next)
-
-  return (args..., _cb) ->
-    cb = _cb
-    next null, args...
 
 # cursor class
 class Cursor extends Emitter
@@ -41,13 +25,9 @@ class Cursor extends Emitter
 
     # @pres and @posts are async methods
     # @pres -> <client.send> -> @mdls -> @postsの順に実行
-    @mdls = []
+    @_mdls = []
     @_pres = []
     @_posts = []
-    @_preMethods = (data, context, next) ->
-      next null, data, context
-    @_postMethods = (val, next) ->
-      next null, val
 
   # error handler
   error: (cb) ->
@@ -92,33 +72,41 @@ class Cursor extends Emitter
           @update()
         , 0
 
+  _pre_methods: (data, context, cb) ->
+    async.waterfall [
+      (next) -> next null, data, context
+    ].concat(@_pres), cb
+
+  _post_methods: (val, cb) ->
+    async.waterfall [
+      (next) -> next null, val
+    ].concat(@_posts), cb
+
   _query_with_middlewares: (data, context, cb) ->
 
-    @_preMethods data, context, (err, data) =>
+    @_pre_methods data, context, (err, data) =>
       return cb err if err
 
       @client.send @method, data, @options, (err, val) =>
         return cb err if err
 
         try
-          val = mdl(val) for mdl in @mdls
+          val = mdl(val) for mdl in @_mdls
         catch e
           return cb err
 
-        @_postMethods val, cb
+        @_post_methods val, cb
 
   # sync middlewares
   map: (mdl) ->
-    @mdls.push(mdl)
+    @_mdls.push(mdl)
 
   pre: (func) ->
     @_pres.push func
-    @_preMethods = __build_chain(@_pres)
     return @
 
   post: (func) ->
     @_posts.push func
-    @_postMethods = __build_chain(@_posts)
     return @
 
 
