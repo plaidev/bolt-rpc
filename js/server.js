@@ -13,7 +13,9 @@
   FORCE_STOP = "FORCE_STOP";
 
   Response = (function() {
-    function Response(_cb) {
+    function Response(server, options, _cb) {
+      this.server = server;
+      this.options = options;
       this._cb = _cb;
     }
 
@@ -25,6 +27,19 @@
     Response.prototype.json = function(val) {
       this.val = val;
       return this._cb(FORCE_STOP, val);
+    };
+
+    Response.prototype.track = function(track_path, context, track_name_space) {
+      if (track_path == null) {
+        track_path = this.options.track_path || '';
+      }
+      if (context == null) {
+        context = {};
+      }
+      if (track_name_space == null) {
+        track_name_space = this.options.track_name_path || DEFAULT_SUB_NAME_SPACE;
+      }
+      return this.server.track(track_path, context, track_name_space);
     };
 
     return Response;
@@ -136,11 +151,19 @@
       return _results;
     };
 
-    StackServer.prototype.track = function(track_path, data, track_name_space) {
+    StackServer.prototype.get_track_name_space = function(path, req) {
+      return '__';
+    };
+
+    StackServer.prototype.get_track_path = function(path, req) {
+      return path;
+    };
+
+    StackServer.prototype.track = function(track_path, context, track_name_space) {
       if (track_name_space == null) {
         track_name_space = DEFAULT_SUB_NAME_SPACE;
       }
-      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + track_path + '_track', data);
+      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + track_path + '_track', context);
     };
 
     StackServer.prototype.error = function(_error) {
@@ -205,53 +228,54 @@
     };
 
     StackServer.prototype.use = function() {
-      var args, method, path, sub_name_space, _base, _base1, _i, _len;
+      var arg, args, path, sub_name_space, track, _base, _base1, _i, _len, _results;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      sub_name_space = null;
-      path = null;
-      if (!(args[0] instanceof StackServer) && !(args[0] instanceof Function) && !(typeof args[0] === 'string' || args[0] instanceof String)) {
-        if (args[0]) {
-          sub_name_space = args[0].sub_name_space;
-        }
-        args = args.slice(1);
-      }
-      if (typeof args[0] === 'string' || args[0] instanceof String) {
-        if (args[0]) {
-          path = args[0];
-        }
-        args = args.slice(1);
-      }
-      if (sub_name_space == null) {
-        sub_name_space = DEFAULT_SUB_NAME_SPACE;
-      }
-      if (path == null) {
-        path = '';
-      }
-      if ((_base = this.settings)[sub_name_space] == null) {
-        _base[sub_name_space] = {
-          pres: [],
-          methodHash: {},
-          posts: []
-        };
-      }
+      sub_name_space = DEFAULT_SUB_NAME_SPACE;
+      path = '';
+      track = false;
+      _results = [];
       for (_i = 0, _len = args.length; _i < _len; _i++) {
-        method = args[_i];
-        if (method instanceof StackServer) {
-          this.extend(method, path);
-        } else if (method.length === 5) {
-          this.settings[sub_name_space].posts.push(method);
-        } else {
-          if ((_base1 = this.settings[sub_name_space].methodHash)[path] == null) {
-            _base1[path] = [];
+        arg = args[_i];
+        if (arg instanceof StackServer) {
+          _results.push(this.extend(arg, path));
+        } else if (arg instanceof Function) {
+          if ((_base = this.settings)[sub_name_space] == null) {
+            _base[sub_name_space] = {
+              pres: [],
+              methodHash: {},
+              posts: []
+            };
           }
-          this.settings[sub_name_space].methodHash[path].push(method);
+          if (arg.length === 5) {
+            this.settings[sub_name_space].posts.push(arg);
+          } else {
+            if ((_base1 = this.settings[sub_name_space].methodHash)[path] == null) {
+              _base1[path] = [];
+            }
+            this.settings[sub_name_space].methodHash[path].push(arg);
+          }
+          _results.push(this._update(sub_name_space, path, track));
+        } else if (typeof arg === 'string' || arg instanceof String) {
+          _results.push(path = arg);
+        } else {
+          if (arg.sub_name_space != null) {
+            sub_name_space = arg.sub_name_space;
+          }
+          if (arg.track != null) {
+            _results.push(track = arg.track);
+          } else {
+            _results.push(void 0);
+          }
         }
       }
-      return this._update(sub_name_space, path);
+      return _results;
     };
 
-    StackServer.prototype._update = function(sub_name_space, path) {
+    StackServer.prototype._update = function(sub_name_space, path, track) {
       var len, methodHash, paths, posts, pres, self, _i, _m, _methods, _path, _ref, _ref1;
+      if (track == null) {
+        track = false;
+      }
       if (this.server == null) {
         return;
       }
@@ -265,7 +289,7 @@
       }
       _methods = _methods.concat(posts);
       _m = function(data, options, next, socket) {
-        var req, res, series;
+        var req, res, responseOptions, series;
         if ('function' === typeof options) {
           socket = next;
           next = options;
@@ -281,7 +305,19 @@
         req.body = req.data = data;
         req.path = path;
         req.options = options != null ? options : {};
-        res = new Response();
+        responseOptions = {
+          track_name_space: self.get_track_name_space(path, req),
+          track_path: self.get_track_path(path, req)
+        };
+        res = new Response(this, responseOptions, null);
+        if (track) {
+          if (!req.__ends__) {
+            req.__ends__ = [];
+          }
+          req.__ends__.push(function() {
+            return res.track();
+          });
+        }
         series = [];
         return async.eachSeries(_methods, function(method, cb) {
           res._cb = cb;
