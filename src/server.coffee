@@ -114,16 +114,16 @@ class StackServer
 
         @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
 
-        if method.length is 5 # (err, req, res, next, socket) ->
-          @settings[sub_name_space].posts.push method
+        if arg.length is 5 # (err, req, res, next, socket) ->
+          @settings[sub_name_space].posts.push arg
 
         else
           @settings[sub_name_space].methodHash[path] ?= []
-          @settings[sub_name_space].methodHash[path].push method
+          @settings[sub_name_space].methodHash[path].push arg
 
         @_update(sub_name_space, path, track)
 
-      else if typeof(args[0]) is 'string' or args[0] instanceof String
+      else if typeof(arg) is 'string' or arg instanceof String
         path = arg
 
       else
