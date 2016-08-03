@@ -36,6 +36,7 @@
       if (context == null) {
         context = {};
       }
+      context.auto_track = true;
       if (track_name_space == null) {
         track_name_space = this.options.track_name_path || DEFAULT_SUB_NAME_SPACE;
       }
@@ -309,8 +310,8 @@
           track_name_space: self.get_track_name_space(path, req),
           track_path: self.get_track_path(path, req)
         };
-        res = new Response(this, responseOptions, null);
-        if (track) {
+        res = new Response(self, responseOptions, null);
+        if (track && !options.auto_tracked_request) {
           if (!req.__ends__) {
             req.__ends__ = [];
           }

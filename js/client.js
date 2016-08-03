@@ -1,7 +1,8 @@
 (function() {
   var Client, Cursor, Emitter, TrackClient, TrackCursor, async, __swap_options_and_handler,
     __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
 
   try {
     Emitter = require('component-emitter');
@@ -56,6 +57,7 @@
     };
 
     Cursor.prototype.update = function(data, context) {
+      var _base;
       if (data !== void 0) {
         this.data = data;
       }
@@ -63,7 +65,12 @@
         return;
       }
       if (this.calling) {
-        this.updateRequest = true;
+        this.updateRequest = {};
+        if (context != null ? context.auto_track : void 0) {
+          if ((_base = this.updateRequest).auto_track == null) {
+            _base.auto_track = context.auto_track;
+          }
+        }
         return this;
       }
       this.calling = true;
@@ -78,9 +85,10 @@
             _this.emit('end', val);
           }
           if (_this.updateRequest) {
+            context = _this.updateRequest;
             _this.updateRequest = false;
             return setTimeout(function() {
-              return _this.update();
+              return _this.update(void 0, context);
             }, 0);
           }
         };
@@ -106,18 +114,29 @@
     Cursor.prototype._query_with_middlewares = function(data, context, cb) {
       return this._pre_methods(data, context, (function(_this) {
         return function(err, data) {
+          var k, options, v, _ref;
           if (err) {
             return cb(err);
           }
-          return _this.client.send(_this.method, data, _this.options, function(err, val) {
-            var e, mdl, _i, _len, _ref;
+          options = {};
+          _ref = _this.options;
+          for (k in _ref) {
+            if (!__hasProp.call(_ref, k)) continue;
+            v = _ref[k];
+            options[k] = v;
+          }
+          if (context != null ? context.auto_track : void 0) {
+            options.auto_tracked_request = true;
+          }
+          return _this.client.send(_this.method, data, options, function(err, val) {
+            var e, mdl, _i, _len, _ref1;
             if (err) {
               return cb(err);
             }
             try {
-              _ref = _this._mdls;
-              for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                mdl = _ref[_i];
+              _ref1 = _this._mdls;
+              for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                mdl = _ref1[_i];
                 val = mdl(val);
               }
             } catch (_error) {
@@ -135,7 +154,16 @@
     };
 
     Cursor.prototype.pre = function(func) {
-      this._pres.push(func);
+      this._pres.push(function(data, context, cb) {
+        return func(data, context, function() {
+          var args, err;
+          err = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+          if (args.length === 0) {
+            return cb(err, data, context);
+          }
+          return cb.apply(null, [err].concat(__slice.call(args)));
+        });
+      });
       return this;
     };
 
