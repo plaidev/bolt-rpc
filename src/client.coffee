@@ -47,7 +47,8 @@ class Cursor extends Emitter
 
     # reject if now calling, but keep data and request.
     if @calling
-      @updateRequest = true
+      @updateRequest = {}
+      @updateRequest.auto_track ?= context.auto_track if context?.auto_track
       return @
 
     @calling = true
@@ -67,9 +68,10 @@ class Cursor extends Emitter
 
       # update more once if requested
       if @updateRequest
+        context = @updateRequest
         @updateRequest = false
         setTimeout =>
-          @update()
+          @update undefined, context
         , 0
 
   _pre_methods: (data, context, cb) ->
@@ -87,7 +89,11 @@ class Cursor extends Emitter
     @_pre_methods data, context, (err, data) =>
       return cb err if err
 
-      @client.send @method, data, @options, (err, val) =>
+      options = {}
+      options[k] = v for own k, v of @options
+      options.auto_tracked_request = true if context?.auto_track
+
+      @client.send @method, data, options, (err, val) =>
         return cb err if err
 
         try
@@ -102,7 +108,11 @@ class Cursor extends Emitter
     @_mdls.push(mdl)
 
   pre: (func) ->
-    @_pres.push func
+    @_pres.push (data, context, cb) ->
+      func data, context, (err, args...) ->
+        if args.length is 0
+          return cb err, data, context
+        cb err, args...
     return @
 
   post: (func) ->
