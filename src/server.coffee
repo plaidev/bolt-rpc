@@ -179,7 +179,7 @@ class StackServer
         track_name_space: self.get_track_name_space(path, req)
         track_path: self.get_track_path(path, req)
 
-      res = new Response(@, responseOptions, null)
+      res = new Response(self, responseOptions, null)
 
       if track
         req.__ends__ = [] if not req.__ends__
