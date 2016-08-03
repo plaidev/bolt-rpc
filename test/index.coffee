@@ -223,6 +223,29 @@ describe 'Promise API', ->
       server.track 'add2', {}
     , 200
 
+  it 'simple track cursor, track after call auto tracked method.', (done) ->
+    setuped = false
+
+    server.use 'add_auto_tracked', {track: true}, (req, res, next) ->
+      a = req.data.a
+      b = req.data.b
+      res.send a + b
+
+    cursor = client.track 'add_auto_tracked', {a: 1, b: 2}
+    cursor.end (val) ->
+      assert val is 3
+      if setuped
+        done()
+    cursor.track true
+
+    setTimeout ->
+      setuped = true
+      client2 = new Client io_for_client, {url: 'http://localhost:2000'}
+      client2.send 'add_auto_tracked', {a: 3, b: 4}, (err, val) ->
+        assert not err
+        assert val is 7
+    , 200
+
   it 'sub-namespaced track cursor, track after update.', (done) ->
     clientOther = new Client io_for_client, {url: 'http://localhost:2000', track_name_space: 'other'}
 
