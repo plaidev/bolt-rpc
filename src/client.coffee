@@ -48,7 +48,8 @@ class Cursor extends Emitter
     # reject if now calling, but keep data and request.
     if @calling
       @updateRequest = {}
-      @updateRequest.auto_track ?= context.auto_track if context?.auto_track
+      if context?.auto_track
+        @updateRequest.auto_track ?= context.auto_track
       return @
 
     @calling = true
@@ -73,6 +74,8 @@ class Cursor extends Emitter
         setTimeout =>
           @update undefined, context
         , 0
+
+    return @
 
   _pre_methods: (data, context, cb) ->
     async.waterfall [
@@ -124,8 +127,6 @@ class Cursor extends Emitter
 class TrackCursor extends Cursor
 
   # options.name_space
-  # options.sub_name_space
-  # options.track_name_space
   # options.track_path
   constructor: (client, method, data, options, handler) ->
 
@@ -144,18 +145,15 @@ class TrackCursor extends Cursor
         handler null, val
 
     # activate tracking
-    sub_name_space = @client.sub_name_space
-    {track_name_space, track_path} = @options
-
-    if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
-      @client.join track_name_space
-
-    track_name_space ?= sub_name_space or '__'
+    {track_path} = @options
     track_path ?= method
+    track_path = track_path.split?('.') if not (track_path instanceof Array)
 
-    @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
-      return if @tracking is false
+    return if not track_path or track_path.length is 0
 
+    @client.join track_path[0]
+    @client._socket.on track_path.join('.') + '_track', (trackContext) =>
+      return if not @tracking
       @update undefined, trackContext
 
   track: (flag) ->
@@ -167,19 +165,25 @@ class TrackCursor extends Cursor
 
 
 # client class
+# TODO: not 'is a'
 class TrackClient extends Client
 
   constructor: (io_or_socket, options={}) ->
-    {track_name_space} = options
-    @default_track_name_space = track_name_space if track_name_space?
+    {track_path} = options
+    @default_track_path = track_path if track_path?
 
     super io_or_socket, options
 
+    track_path = track_path?.split?('.') if not (track_path instanceof Array)
+    return if not track_path or track_path.length is 0
+
+    @join track_path[0]
+
   # track api which return cursor.
-  track: (method, data={}, options={}, handler=null) ->
+  track: (method, data, options={}, handler=null) ->
 
     {options, handler} = __swap_options_and_handler {options, handler}
-    options.track_name_space ?= @default_track_name_space if @default_track_name_space?
+    options.track_path ?= @default_track_path if @default_track_path?
 
     cursor = new TrackCursor(@, method, data, options, handler)
 
