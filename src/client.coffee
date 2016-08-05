@@ -48,7 +48,8 @@ class Cursor extends Emitter
     # reject if now calling, but keep data and request.
     if @calling
       @updateRequest = {}
-      @updateRequest.auto_track ?= context.auto_track if context?.auto_track
+      if context?.auto_track
+        @updateRequest.auto_track ?= context.auto_track
       return @
 
     @calling = true

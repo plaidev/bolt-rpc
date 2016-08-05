@@ -20,7 +20,6 @@ class Response
   track: (track_path, context, track_name_space) ->
     track_path ?= @options.track_path or ''
     context ?= {}
-    context.auto_track = true
     track_name_space ?= @options.track_name_path or DEFAULT_SUB_NAME_SPACE
     @server.track track_path, context, track_name_space
 
@@ -185,7 +184,7 @@ class StackServer
       if track and not options.auto_tracked_request
         req.__ends__ = [] if not req.__ends__
         req.__ends__.push ->
-          res.track()
+          res.track(undefined, {auto_track: true})
 
       series = []
 
