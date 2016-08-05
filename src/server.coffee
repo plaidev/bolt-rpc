@@ -17,11 +17,11 @@ class Response
   json: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
-  track: (track_path, context, track_name_space) ->
+  track: (track_path, context, sub_name_space) ->
     track_path ?= @options.track_path or ''
     context ?= {}
-    track_name_space ?= @options.track_name_path or DEFAULT_SUB_NAME_SPACE
-    @server.track track_path, context, track_name_space
+    sub_name_space ?= @options.track_name_path or DEFAULT_SUB_NAME_SPACE
+    @server.track track_path, context, sub_name_space
 
 # server which can handle middlewares like express
 class StackServer
@@ -75,15 +75,15 @@ class StackServer
 
         @_update(sub_name_space, path)
 
-  get_track_name_space: (path, req) ->
+  get_sub_name_space: (path, req) ->
     return '__'
 
   get_track_path: (path, req) ->
     return path
 
-  track: (track_path, context, track_name_space=DEFAULT_SUB_NAME_SPACE) ->
+  track: (track_path, context, sub_name_space=DEFAULT_SUB_NAME_SPACE) ->
 
-    @server.channel.to(track_name_space).emit track_name_space + '.' + track_path + '_track', context
+    @server.channel.to(sub_name_space).emit sub_name_space + '.' + track_path + '_track', context
 
   error: (@_error) ->
     return @_error
@@ -176,7 +176,7 @@ class StackServer
       req.options = options ? {}
 
       responseOptions =
-        track_name_space: self.get_track_name_space(path, req)
+        sub_name_space: self.get_sub_name_space(path, req)
         track_path: self.get_track_path(path, req)
 
       res = new Response(self, responseOptions, null)

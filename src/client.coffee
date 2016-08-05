@@ -126,7 +126,6 @@ class TrackCursor extends Cursor
 
   # options.name_space
   # options.sub_name_space
-  # options.track_name_space
   # options.track_path
   constructor: (client, method, data, options, handler) ->
 
@@ -145,16 +144,11 @@ class TrackCursor extends Cursor
         handler null, val
 
     # activate tracking
-    sub_name_space = @client.sub_name_space
-    {track_name_space, track_path} = @options
-
-    if track_name_space? and track_name_space isnt '__' and track_name_space isnt sub_name_space
-      @client.join track_name_space
-
-    track_name_space ?= sub_name_space or '__'
+    {sub_name_space, track_path} = @options
     track_path ?= method
+    sub_name_space ?= '__'
 
-    @client._socket.on track_name_space + '.' + track_path + '_track', (trackContext) =>
+    @client._socket.on sub_name_space + '.' + track_path + '_track', (trackContext) =>
       return if @tracking is false
 
       @update undefined, trackContext
@@ -171,8 +165,8 @@ class TrackCursor extends Cursor
 class TrackClient extends Client
 
   constructor: (io_or_socket, options={}) ->
-    {track_name_space} = options
-    @default_track_name_space = track_name_space if track_name_space?
+    {sub_name_space} = options
+    @default_sub_name_space = sub_name_space if sub_name_space?
 
     super io_or_socket, options
 
@@ -180,7 +174,7 @@ class TrackClient extends Client
   track: (method, data={}, options={}, handler=null) ->
 
     {options, handler} = __swap_options_and_handler {options, handler}
-    options.track_name_space ?= @default_track_name_space if @default_track_name_space?
+    options.sub_name_space ?= @default_sub_name_space if @default_sub_name_space?
 
     cursor = new TrackCursor(@, method, data, options, handler)
 
