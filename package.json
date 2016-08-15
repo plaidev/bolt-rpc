@@ -27,7 +27,7 @@
   "dependencies": {
     "async": "0.9.0",
     "component-emitter": "1.2.0",
-    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#22b80fece8ef6a8ea4c76fbbb760d495ed3b8053",
+    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#e012a6b749b518db5f102fd1c40b053ad75177ff",
     "shallow-copy": "0.0.1"
   },
   "devDependencies": {

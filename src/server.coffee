@@ -75,12 +75,6 @@ class StackServer
 
         @_update(sub_name_space, path)
 
-  get_sub_name_space: (path, req) ->
-    return '__'
-
-  get_track_path: (path, req) ->
-    return path
-
   track: (track_path, context, sub_name_space=DEFAULT_SUB_NAME_SPACE) ->
 
     @server.channel.to(sub_name_space).emit sub_name_space + '.' + track_path + '_track', context
@@ -147,17 +141,9 @@ class StackServer
 
     self = @
 
-    {pres, methodHash, posts} = @settings[sub_name_space]
     paths = path.split @path_delimiter
 
-    _methods = pres.concat(methodHash[''] or [])
-    for len in [0...paths.length]
-      _path = paths[0..len].join(@path_delimiter)
-      _methods = _methods.concat(methodHash[_path] or [])
-
-    _methods = _methods.concat posts
-
-    _m = (data, options, next, socket) ->
+    _m = (data, options, next, socket) =>
 
       # swaps
       if 'function' is typeof options
@@ -175,9 +161,12 @@ class StackServer
       req.path = path
       req.options = options ? {}
 
+      sub_name_space = options.sub_name_space or DEFAULT_SUB_NAME_SPACE
+      track_path = options.track_path or path
+
       responseOptions =
-        sub_name_space: self.get_sub_name_space(path, req)
-        track_path: self.get_track_path(path, req)
+        sub_name_space: sub_name_space
+        track_path: path
 
       res = new Response(self, responseOptions, null)
 
@@ -187,6 +176,15 @@ class StackServer
           res.track(undefined, {auto_track: true})
 
       series = []
+
+      {pres, methodHash, posts} = @settings[sub_name_space] or {}
+      pres ?= []
+      _methods = pres.concat(methodHash?[''] or [])
+      for len in [0...paths.length]
+        _path = paths[0..len].join(@path_delimiter)
+        _methods = _methods.concat(methodHash?[_path] or [])
+
+      _methods = _methods.concat posts or []
 
       async.eachSeries _methods, (method, cb) ->
 
@@ -213,7 +211,7 @@ class StackServer
 
         next err, res.val
 
-    @server.set path, _m, sub_name_space
+    @server.set path, _m
 
   # obsolete
   setupServer: (args...) ->
