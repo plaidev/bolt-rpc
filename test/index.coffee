@@ -319,7 +319,7 @@ describe 'advanced', ->
     #     assert err
     #     done()
 
-    describe 'track event separate by sub-namespace(or track-namespace)', ->
+    describe 'track event separate by sub-namespace', ->
       num = 0
       obj = {}
       objOther = {}
@@ -339,7 +339,7 @@ describe 'advanced', ->
         setTimeout done, 100
 
       it 'track default sub-namespace', (done) ->
-        num++
+        num++ # 1
         server.track 'count', {}
         setTimeout ->
           assert obj.val.num is 1
@@ -348,16 +348,18 @@ describe 'advanced', ->
         , 200
 
       it 'track other sub-namespace', (done) ->
-        num++
+        num++ # 2
         server.track 'count', {test: 'b'}, 'other'
         setTimeout ->
+          assert obj.val.ns is 'default'
           assert obj.val.num is 1
+          assert objOther.val.ns is 'other'
           assert objOther.val.num is 2
           done()
         , 200
 
       it 'track other track-namespace', (done) ->
-        num++
+        num++ # 3
         server.track 'count', {test: 'c'}, 'other'
         setTimeout ->
           assert obj.val.ns is 'default'
