@@ -75,6 +75,8 @@ class Cursor extends Emitter
           @update undefined, context
         , 0
 
+    return @
+
   _pre_methods: (data, context, cb) ->
     async.waterfall [
       (next) -> next null, data, context
