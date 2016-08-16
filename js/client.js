@@ -74,7 +74,7 @@
         return this;
       }
       this.calling = true;
-      return this._query_with_middlewares(this.data, context, (function(_this) {
+      this._query_with_middlewares(this.data, context, (function(_this) {
         return function(err, val) {
           _this.err = err || null;
           _this.val = val || null;
@@ -93,6 +93,7 @@
           }
         };
       })(this));
+      return this;
     };
 
     Cursor.prototype._pre_methods = function(data, context, cb) {
@@ -180,7 +181,7 @@
     __extends(TrackCursor, _super);
 
     function TrackCursor(client, method, data, options, handler) {
-      var sub_name_space, track_name_space, track_path, _ref, _ref1;
+      var track_path, _ref;
       _ref = __swap_options_and_handler({
         options: options,
         handler: handler
@@ -195,20 +196,17 @@
           return handler(null, val);
         });
       }
-      sub_name_space = this.client.sub_name_space;
-      _ref1 = this.options, track_name_space = _ref1.track_name_space, track_path = _ref1.track_path;
-      if ((track_name_space != null) && track_name_space !== '__' && track_name_space !== sub_name_space) {
-        this.client.join(track_name_space);
-      }
-      if (track_name_space == null) {
-        track_name_space = sub_name_space || '__';
-      }
+      track_path = this.options.track_path;
       if (track_path == null) {
         track_path = method;
       }
-      this.client._socket.on(track_name_space + '.' + track_path + '_track', (function(_this) {
+      if (!(track_path instanceof Array)) {
+        track_path = track_path.split('.');
+      }
+      this.client.join(track_path[0]);
+      this.client._socket.on(track_path.join('.') + '_track', (function(_this) {
         return function(trackContext) {
-          if (_this.tracking === false) {
+          if (!_this.tracking) {
             return;
           }
           return _this.update(void 0, trackContext);
@@ -234,22 +232,19 @@
     __extends(TrackClient, _super);
 
     function TrackClient(io_or_socket, options) {
-      var track_name_space;
+      var track_path;
       if (options == null) {
         options = {};
       }
-      track_name_space = options.track_name_space;
-      if (track_name_space != null) {
-        this.default_track_name_space = track_name_space;
+      track_path = options.track_path;
+      if (track_path != null) {
+        this.default_track_path = track_path;
       }
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
     }
 
     TrackClient.prototype.track = function(method, data, options, handler) {
       var cursor, _ref;
-      if (data == null) {
-        data = {};
-      }
       if (options == null) {
         options = {};
       }
@@ -260,9 +255,9 @@
         options: options,
         handler: handler
       }), options = _ref.options, handler = _ref.handler;
-      if (this.default_track_name_space != null) {
-        if (options.track_name_space == null) {
-          options.track_name_space = this.default_track_name_space;
+      if (this.default_track_path != null) {
+        if (options.track_path == null) {
+          options.track_path = this.default_track_path;
         }
       }
       cursor = new TrackCursor(this, method, data, options, handler);

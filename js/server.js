@@ -1,5 +1,5 @@
 (function() {
-  var DEFAULT_SUB_NAME_SPACE, FORCE_STOP, Response, Server, StackServer, async, copy,
+  var FORCE_STOP, Response, Server, StackServer, async, copy,
     __slice = [].slice;
 
   async = require('async');
@@ -8,8 +8,6 @@
 
   copy = require('shallow-copy');
 
-  DEFAULT_SUB_NAME_SPACE = '__';
-
   FORCE_STOP = "FORCE_STOP";
 
   Response = (function() {
@@ -17,6 +15,7 @@
       this.server = server;
       this.options = options;
       this._cb = _cb;
+      this._tracked = this.options.disable_track ? true : false;
     }
 
     Response.prototype.send = function(val) {
@@ -29,18 +28,24 @@
       return this._cb(FORCE_STOP, val);
     };
 
-    Response.prototype.track = function(track_path, context, track_name_space) {
-      if (track_path == null) {
-        track_path = this.options.track_path || '';
+    Response.prototype.track = function() {
+      var context, track_path, _i, _ref;
+      track_path = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), context = arguments[_i++];
+      if (this._tracked) {
+        return;
       }
-      if (context == null) {
+      if ((typeof context === 'string') || (context instanceof String)) {
+        track_path.push(context);
         context = {};
       }
-      context.auto_track = true;
-      if (track_name_space == null) {
-        track_name_space = this.options.track_name_path || DEFAULT_SUB_NAME_SPACE;
+      if (track_path.length === 0) {
+        return;
       }
-      return this.server.track(track_path, context, track_name_space);
+      if (context.auto_track == null) {
+        context.auto_track = true;
+      }
+      (_ref = this.server).track.apply(_ref, __slice.call(track_path).concat([context]));
+      return this._tracked = true;
     };
 
     return Response;
@@ -57,11 +62,9 @@
       path_delimiter = options.path_delimiter;
       this.path_delimiter = path_delimiter || '.';
       this.settings = {
-        DEFAULT_SUB_NAME_SPACE: {
-          pres: [],
-          methodHash: {},
-          posts: []
-        }
+        pres: [],
+        methodHash: {},
+        posts: []
       };
       if (this.io != null) {
         this.init(this.io, options);
@@ -69,30 +72,22 @@
     }
 
     StackServer.prototype.init = function(io, options) {
-      var methodHash, path, pres, sub_name_space, _ref, _ref1, _results;
+      var methodHash, path, _results;
       this.io = io;
       if (options == null) {
         options = {};
       }
       this.server = new Server(this.io, {}, options);
-      _ref = this.settings;
+      methodHash = this.settings.methodHash;
       _results = [];
-      for (sub_name_space in _ref) {
-        _ref1 = _ref[sub_name_space], pres = _ref1.pres, methodHash = _ref1.methodHash;
-        _results.push((function() {
-          var _results1;
-          _results1 = [];
-          for (path in methodHash) {
-            _results1.push(this._update(sub_name_space, path));
-          }
-          return _results1;
-        }).call(this));
+      for (path in methodHash) {
+        _results.push(this._update(path));
       }
       return _results;
     };
 
     StackServer.prototype.extend = function(baseServer, prefix) {
-      var base, methodHash, path, sub_name_space, _assign, _base, _ref, _ref1, _results;
+      var methodHash, path, _assign, _results;
       if (prefix == null) {
         prefix = null;
       }
@@ -123,48 +118,23 @@
           return _results;
         };
       })(this);
-      _ref = baseServer.settings;
-      for (sub_name_space in _ref) {
-        base = _ref[sub_name_space];
-        if ((_base = this.settings)[sub_name_space] == null) {
-          _base[sub_name_space] = {
-            pres: [],
-            methodHash: {},
-            posts: []
-          };
-        }
-        _assign(this.settings[sub_name_space], base);
-      }
+      _assign(this.settings, baseServer.settings);
       this._error = null;
-      _ref1 = this.settings;
+      methodHash = this.settings.methodHash;
       _results = [];
-      for (sub_name_space in _ref1) {
-        methodHash = _ref1[sub_name_space].methodHash;
-        _results.push((function() {
-          var _results1;
-          _results1 = [];
-          for (path in methodHash) {
-            _results1.push(this._update(sub_name_space, path));
-          }
-          return _results1;
-        }).call(this));
+      for (path in methodHash) {
+        _results.push(this._update(path));
       }
       return _results;
     };
 
-    StackServer.prototype.get_track_name_space = function(path, req) {
-      return '__';
-    };
-
-    StackServer.prototype.get_track_path = function(path, req) {
-      return path;
-    };
-
-    StackServer.prototype.track = function(track_path, context, track_name_space) {
-      if (track_name_space == null) {
-        track_name_space = DEFAULT_SUB_NAME_SPACE;
+    StackServer.prototype.track = function() {
+      var context, track_path, _i;
+      track_path = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), context = arguments[_i++];
+      if (track_path.length === 0) {
+        return;
       }
-      return this.server.channel.to(track_name_space).emit(track_name_space + '.' + track_path + '_track', context);
+      return this.server.channel.to(track_path[0]).emit(track_path.join(this.path_delimiter) + '_track', context);
     };
 
     StackServer.prototype.error = function(_error) {
@@ -172,186 +142,123 @@
       return this._error;
     };
 
-    StackServer.prototype.ns = function(sub_name_space) {
-      return {
-        pre: (function(_this) {
-          return function() {
-            var args;
-            args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-            return _this.pre.apply(_this, [{
-              sub_name_space: sub_name_space
-            }].concat(__slice.call(args)));
-          };
-        })(this),
-        use: (function(_this) {
-          return function() {
-            var args;
-            args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-            return _this.use.apply(_this, [{
-              sub_name_space: sub_name_space
-            }].concat(__slice.call(args)));
-          };
-        })(this)
-      };
-    };
-
     StackServer.prototype.pre = function() {
-      var args, method, path, sub_name_space, _base, _i, _j, _len, _len1, _ref, _results;
+      var args, method, path, _i, _j, _len, _len1, _ref, _results;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      sub_name_space = null;
-      if (!(args[0] instanceof Function)) {
-        if (args[0]) {
-          sub_name_space = args[0].sub_name_space;
-        }
-        args = args.slice(1);
-      }
-      if (sub_name_space == null) {
-        sub_name_space = DEFAULT_SUB_NAME_SPACE;
-      }
-      if ((_base = this.settings)[sub_name_space] == null) {
-        _base[sub_name_space] = {
-          pres: [],
-          methodHash: {},
-          posts: []
-        };
-      }
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         method = args[_i];
-        this.settings[sub_name_space].pres.push(method);
+        this.settings.pres.push(method);
       }
-      _ref = this.settings[sub_name_space].methodHash;
+      _ref = this.settings.methodHash;
       _results = [];
       for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
         path = _ref[_j];
-        _results.push(this._update(sub_name_space, path));
+        _results.push(this._update(path));
       }
       return _results;
     };
 
     StackServer.prototype.use = function() {
-      var arg, args, path, sub_name_space, track, _base, _base1, _i, _len, _results;
+      var arg, args, path, _base, _i, _len, _results;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      sub_name_space = DEFAULT_SUB_NAME_SPACE;
       path = '';
-      track = false;
       _results = [];
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         arg = args[_i];
         if (arg instanceof StackServer) {
           _results.push(this.extend(arg, path));
         } else if (arg instanceof Function) {
-          if ((_base = this.settings)[sub_name_space] == null) {
-            _base[sub_name_space] = {
-              pres: [],
-              methodHash: {},
-              posts: []
-            };
-          }
           if (arg.length === 5) {
-            this.settings[sub_name_space].posts.push(arg);
+            this.settings.posts.push(arg);
           } else {
-            if ((_base1 = this.settings[sub_name_space].methodHash)[path] == null) {
-              _base1[path] = [];
+            if ((_base = this.settings.methodHash)[path] == null) {
+              _base[path] = [];
             }
-            this.settings[sub_name_space].methodHash[path].push(arg);
+            this.settings.methodHash[path].push(arg);
           }
-          _results.push(this._update(sub_name_space, path, track));
+          _results.push(this._update(path));
         } else if (typeof arg === 'string' || arg instanceof String) {
           _results.push(path = arg);
         } else {
-          if (arg.sub_name_space != null) {
-            sub_name_space = arg.sub_name_space;
-          }
-          if (arg.track != null) {
-            _results.push(track = arg.track);
-          } else {
-            _results.push(void 0);
-          }
+          _results.push(console.log('warning, invalid argument:', arg));
         }
       }
       return _results;
     };
 
-    StackServer.prototype._update = function(sub_name_space, path, track) {
-      var len, methodHash, paths, posts, pres, self, _i, _m, _methods, _path, _ref, _ref1;
-      if (track == null) {
-        track = false;
-      }
+    StackServer.prototype._update = function(path) {
+      var paths, self, _m;
       if (this.server == null) {
         return;
       }
       self = this;
-      _ref = this.settings[sub_name_space], pres = _ref.pres, methodHash = _ref.methodHash, posts = _ref.posts;
       paths = path.split(this.path_delimiter);
-      _methods = pres.concat(methodHash[''] || []);
-      for (len = _i = 0, _ref1 = paths.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; len = 0 <= _ref1 ? ++_i : --_i) {
-        _path = paths.slice(0, +len + 1 || 9e9).join(this.path_delimiter);
-        _methods = _methods.concat(methodHash[_path] || []);
-      }
-      _methods = _methods.concat(posts);
-      _m = function(data, options, next, socket) {
-        var req, res, responseOptions, series;
-        if ('function' === typeof options) {
-          socket = next;
-          next = options;
-          options = {};
-        }
-        req = copy(socket.request);
-        req.end = function(cb) {
-          if (!req.__ends__) {
-            req.__ends__ = [];
+      _m = (function(_this) {
+        return function(data, options, next, socket) {
+          var len, methodHash, posts, pres, req, res, responseOptions, series, _i, _methods, _path, _ref, _ref1;
+          if ('function' === typeof options) {
+            socket = next;
+            next = options;
+            options = {};
           }
-          return req.__ends__.push(cb);
-        };
-        req.body = req.data = data;
-        req.path = path;
-        req.options = options != null ? options : {};
-        responseOptions = {
-          track_name_space: self.get_track_name_space(path, req),
-          track_path: self.get_track_path(path, req)
-        };
-        res = new Response(self, responseOptions, null);
-        if (track && !options.auto_tracked_request) {
-          if (!req.__ends__) {
-            req.__ends__ = [];
-          }
-          req.__ends__.push(function() {
-            return res.track();
-          });
-        }
-        series = [];
-        return async.eachSeries(_methods, function(method, cb) {
-          res._cb = cb;
-          return method(req, res, cb, socket);
-        }, function(err, val) {
-          if (req.__ends__) {
-            req.__ends__.map(function(end) {
-              return end();
-            });
-          }
-          if (err === FORCE_STOP) {
-            err = null;
-          }
-          if (err instanceof Error) {
-            if (self._error) {
-              self._error(err, req, res, function(err) {
-                if (err instanceof Error) {
-                  err = {
-                    message: err.message
-                  };
-                }
-                return next(err, res.val);
-              });
-              return;
+          req = copy(socket.request);
+          req.end = function(cb) {
+            if (!req.__ends__) {
+              req.__ends__ = [];
             }
-            err = {
-              message: err.message
-            };
+            return req.__ends__.push(cb);
+          };
+          req.body = req.data = data;
+          req.path = path;
+          req.options = options != null ? options : {};
+          responseOptions = {
+            disable_track: options.auto_tracked_request ? true : false
+          };
+          res = new Response(self, responseOptions, null);
+          series = [];
+          _ref = _this.settings || {}, pres = _ref.pres, methodHash = _ref.methodHash, posts = _ref.posts;
+          if (pres == null) {
+            pres = [];
           }
-          return next(err, res.val);
-        });
-      };
-      return this.server.set(path, _m, sub_name_space);
+          _methods = pres.concat((methodHash != null ? methodHash[''] : void 0) || []);
+          for (len = _i = 0, _ref1 = paths.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; len = 0 <= _ref1 ? ++_i : --_i) {
+            _path = paths.slice(0, +len + 1 || 9e9).join(_this.path_delimiter);
+            _methods = _methods.concat((methodHash != null ? methodHash[_path] : void 0) || []);
+          }
+          _methods = _methods.concat(posts || []);
+          return async.eachSeries(_methods, function(method, cb) {
+            res._cb = cb;
+            return method(req, res, cb, socket);
+          }, function(err, val) {
+            if (req.__ends__) {
+              req.__ends__.map(function(end) {
+                return end();
+              });
+            }
+            if (err === FORCE_STOP) {
+              err = null;
+            }
+            if (err instanceof Error) {
+              if (self._error) {
+                self._error(err, req, res, function(err) {
+                  if (err instanceof Error) {
+                    err = {
+                      message: err.message
+                    };
+                  }
+                  return next(err, res.val);
+                });
+                return;
+              }
+              err = {
+                message: err.message
+              };
+            }
+            return next(err, res.val);
+          });
+        };
+      })(this);
+      return this.server.set(path, _m);
     };
 
     StackServer.prototype.setupServer = function() {
