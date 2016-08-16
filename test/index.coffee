@@ -187,7 +187,17 @@ describe 'Promise API', ->
     cursor.update({call: 4})
     cursor.update({call: 5})
 
-  it 'simple track cursor, end after update.', (done) ->
+
+describe 'simple track cursor,', ->
+
+  _auto_track_middleware = (name) ->
+    return (req, res, next) ->
+      name = req.path if not name
+      req.end ->
+        res.track name
+      next()
+
+  it 'end after update.', (done) ->
     check = false
 
     cursor = client.track 'add'
@@ -202,7 +212,7 @@ describe 'Promise API', ->
       cursor.update({a: 1, b: 2})
     , 200
 
-  it 'simple track cursor, track after update.', (done) ->
+  it 'track after update.', (done) ->
     called = 0
 
     server.use 'add2', (req, res, next) ->
@@ -223,10 +233,10 @@ describe 'Promise API', ->
       server.track 'add2', {}
     , 200
 
-  it 'simple track cursor, track after call auto tracked method.', (done) ->
+  it 'track after call auto tracked method.', (done) ->
     setuped = false
 
-    server.use 'add_auto_tracked', {track: true}, (req, res, next) ->
+    server.use 'add_auto_tracked', _auto_track_middleware(), (req, res, next) ->
       a = req.data.a
       b = req.data.b
       res.send a + b
@@ -249,7 +259,7 @@ describe 'Promise API', ->
   it 'track after call named auto tracked method.', (done) ->
     setuped = false
 
-    server.use 'add_named_auto_tracked', {track: 'track_name'}, (req, res, next) ->
+    server.use 'add_named_auto_tracked', _auto_track_middleware('track_name'), (req, res, next) ->
       a = req.data.a
       b = req.data.b
       res.send a + b

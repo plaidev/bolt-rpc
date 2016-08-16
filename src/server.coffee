@@ -9,13 +9,16 @@ FORCE_STOP = "FORCE_STOP"
 # mock response object like express
 class Response
   constructor: (@server, @options, @_cb) ->
-    @_tracked = false
+    @_tracked = if @options.disable_track then true else false
+
   send: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
+
   json: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
+
   track: (track_path..., context) ->
     return if @_tracked
 
@@ -23,13 +26,12 @@ class Response
       track_path.push context
       context = {}
 
-    if track_path.length is 0
-      track_path = @options.track_path
-      track_path = track_path.split(@options.path_delimiter) if not (track_path instanceof Array)
+    return if track_path.length is 0
 
     context.auto_track ?= true
 
     @server.track track_path..., context
+
     @_tracked = true
 
 # server which can handle middlewares like express
@@ -99,7 +101,6 @@ class StackServer
 
   use: (args...) ->
     path = ''
-    track = false
 
     for arg in args
 
@@ -115,15 +116,15 @@ class StackServer
           @settings.methodHash[path] ?= []
           @settings.methodHash[path].push arg
 
-        @_update(path, track)
+        @_update(path)
 
       else if typeof(arg) is 'string' or arg instanceof String
         path = arg
 
       else
-        track = arg.track if arg.track?
+        console.log 'warning, invalid argument:', arg
 
-  _update: (path, track=false) ->
+  _update: (path) ->
     return if not @server?
 
     self = @
@@ -148,23 +149,10 @@ class StackServer
       req.path = path
       req.options = options ? {}
 
-      if typeof track is 'boolean' or track instanceof Boolean
-        track_path = paths
-      else if typeof track is 'function' or track instanceof Function
-        track_path = track(req)
-      else
-        track_path = track
-
       responseOptions =
-        path_delimiter: @path_delimiter
-        track_path: track_path
+        disable_track: if options.auto_tracked_request then true else false
 
       res = new Response(self, responseOptions, null)
-
-      if track and not options.auto_tracked_request
-        req.__ends__ = [] if not req.__ends__
-        req.__ends__.push ->
-          res.track {auto_track: true}
 
       series = []
 

@@ -151,8 +151,7 @@ class TrackCursor extends Cursor
 
     @client.join track_path[0]
     @client._socket.on track_path.join('.') + '_track', (trackContext) =>
-      return if @tracking is false
-
+      return if not @tracking
       @update undefined, trackContext
 
   track: (flag) ->
