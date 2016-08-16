@@ -246,15 +246,15 @@ describe 'Promise API', ->
         assert val is 7
     , 200
 
-  it 'simple track cursor, track after call named auto tracked method.', (done) ->
+  it 'track after call named auto tracked method.', (done) ->
     setuped = false
 
-    server.use 'add_auto_tracked', {track: 'track_name'}, (req, res, next) ->
+    server.use 'add_named_auto_tracked', {track: 'track_name'}, (req, res, next) ->
       a = req.data.a
       b = req.data.b
       res.send a + b
 
-    cursor = client.track 'add_auto_tracked', {a: 1, b: 2}, {track_path: 'track_name'}
+    cursor = client.track 'add_named_auto_tracked', {a: 1, b: 2}, {track_path: 'track_name'}
     cursor.end (val) ->
       assert val is 3
       if setuped
@@ -264,7 +264,7 @@ describe 'Promise API', ->
     setTimeout ->
       setuped = true
       client2 = new Client io_for_client, {url: 'http://localhost:2000'}
-      client2.send 'add_auto_tracked', {a: 3, b: 4}, (err, val) ->
+      client2.send 'add_named_auto_tracked', {a: 3, b: 4}, (err, val) ->
         assert not err
         assert val is 7
     , 200
@@ -411,7 +411,8 @@ describe 'track cursor', ->
       res.json {success: true, method: 'test'}
 
     @server.use 'test_with_auto_track', (req, res, next) ->
-      res.track ACCEPT_ROOM
+      req.end ->
+        res.track ACCEPT_ROOM
       res.json {success: true}
 
     @clientModuleTrack = new Client io_for_client, {
@@ -435,8 +436,8 @@ describe 'track cursor', ->
       .end ({success}) ->
         assert success
         called++
-        assert called < 2
-        if called is 1
+        assert called < 3
+        if called is 2
           cursor.track false
           done()
       .track true
