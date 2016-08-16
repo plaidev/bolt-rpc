@@ -201,7 +201,10 @@
         track_path = method;
       }
       if (!(track_path instanceof Array)) {
-        track_path = track_path.split('.');
+        track_path = typeof track_path.split === "function" ? track_path.split('.') : void 0;
+      }
+      if (!track_path || track_path.length === 0) {
+        return;
       }
       this.client.join(track_path[0]);
       this.client._socket.on(track_path.join('.') + '_track', (function(_this) {

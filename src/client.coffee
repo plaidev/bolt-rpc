@@ -147,7 +147,9 @@ class TrackCursor extends Cursor
     # activate tracking
     {track_path} = @options
     track_path ?= method
-    track_path = track_path.split('.') if not (track_path instanceof Array)
+    track_path = track_path.split?('.') if not (track_path instanceof Array)
+
+    return if not track_path or track_path.length is 0
 
     @client.join track_path[0]
     @client._socket.on track_path.join('.') + '_track', (trackContext) =>
