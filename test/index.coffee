@@ -246,12 +246,37 @@ describe 'Promise API', ->
         assert val is 7
     , 200
 
-  it 'sub-namespaced track cursor, track after update.', (done) ->
-    clientOther = new Client io_for_client, {url: 'http://localhost:2000', sub_name_space: 'other'}
+  it 'simple track cursor, track after call named auto tracked method.', (done) ->
+    setuped = false
+
+    server.use 'add_auto_tracked', {track: 'track_name'}, (req, res, next) ->
+      a = req.data.a
+      b = req.data.b
+      res.send a + b
+
+    cursor = client.track 'add_auto_tracked', {a: 1, b: 2}, {track_path: 'track_name'}
+    cursor.end (val) ->
+      assert val is 3
+      if setuped
+        done()
+    cursor.track true
+
+    setTimeout ->
+      setuped = true
+      client2 = new Client io_for_client, {url: 'http://localhost:2000'}
+      client2.send 'add_auto_tracked', {a: 3, b: 4}, (err, val) ->
+        assert not err
+        assert val is 7
+    , 200
+
+  it 'track cursor with track_path, track after update.', (done) ->
+    clientOther = new Client io_for_client, {
+      url: 'http://localhost:2000'
+      track_path: 'track_path'}
 
     setuped = false
 
-    server.ns('other').use 'addOther', (req, res, next) ->
+    server.use 'addOther', (req, res, next) ->
       a = req.data.a
       b = req.data.b
       res.send a + b
@@ -271,7 +296,7 @@ describe 'Promise API', ->
 
     setTimeout ->
       setuped = true
-      server.track 'addOther', {}, 'other'
+      server.track 'track_path', {}
     , 200
 
 describe 'advanced', ->
@@ -363,3 +388,107 @@ describe 'advanced', ->
       client.send 'submodule.method', {}, (err, val) =>
         assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'middleware3', 'method']
         done()
+
+
+describe 'track cursor', ->
+
+  NS = 'track_auth'
+  ACCEPT_ROOM = 'accept_room'
+  REJECT_ROOM = 'reject_room'
+
+  before (done) ->
+
+    @server = new Server(io, {
+      name_space: NS
+      join: (socket, room, cb) ->
+        if room is 'accept_room'
+          cb() # accept
+        else
+          cb new Error 'security error' # reject
+    })
+
+    @server.use 'test', (req, res, next) ->
+      res.json {success: true, method: 'test'}
+
+    @server.use 'test_with_auto_track', (req, res, next) ->
+      res.track ACCEPT_ROOM
+      res.json {success: true}
+
+    @clientModuleTrack = new Client io_for_client, {
+      name_space: NS
+      url: 'http://localhost:2000'
+      track_path: ACCEPT_ROOM
+    }
+
+    done()
+
+  it 'can join accept room', (done) ->
+
+    cursor = @clientModuleTrack.track 'test_with_auto_track'
+
+    called = 0
+
+    cursor
+      .error (err) ->
+        console.log err
+        assert false
+      .end ({success}) ->
+        assert success
+        called++
+        assert called < 2
+        if called is 1
+          cursor.track false
+          done()
+      .track true
+      .update {}
+
+  it 'cannot join reject room', (done) ->
+
+    cursor = @clientModuleTrack.track 'test_with_auto_track', undefined, {
+      track_path: REJECT_ROOM
+    }
+
+    called = 0
+
+    cursor
+      .error (err) ->
+        console.log err
+        assert false
+      .end ({success}) ->
+        assert success
+        called++
+        assert called < 2
+        if called is 1
+          cursor.track false
+          done()
+      .track true
+      .update {}
+
+    @server.track REJECT_ROOM
+
+  it 'can update by accept room track', (done) ->
+
+    cursor = @clientModuleTrack.track 'test', undefined, {
+      track_path: ACCEPT_ROOM
+    }
+
+    called = 0
+
+    cursor
+      .error (err) ->
+        console.log err
+        assert false
+      .end ({success, method}) ->
+        assert method is 'test'
+        assert success
+        called++
+        assert called < 3
+        if called is 2
+          cursor.track false
+          done()
+      .track true
+      .update {}
+
+    @clientModuleTrack.send 'test_with_auto_track', {}, (err, {success}) ->
+      assert not err
+      assert success
