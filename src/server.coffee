@@ -3,25 +3,34 @@ async = require('async')
 {Server} = require('minimum-rpc')
 copy = require('shallow-copy')
 
-DEFAULT_SUB_NAME_SPACE = '__'
-
 # for stopping in async flow
 FORCE_STOP = "FORCE_STOP"
 
 # mock response object like express
 class Response
   constructor: (@server, @options, @_cb) ->
+    @_tracked = false
   send: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
   json: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
-  track: (track_path, context, sub_name_space) ->
-    track_path ?= @options.track_path or ''
-    context ?= {}
-    sub_name_space ?= @options.track_name_path or DEFAULT_SUB_NAME_SPACE
-    @server.track track_path, context, sub_name_space
+  track: (track_path..., context) ->
+    return if @_tracked
+
+    if (typeof context is 'string') or (context instanceof String)
+      track_path.push context
+      context = {}
+
+    if track_path.length is 0
+      track_path = @options.track_path
+      track_path = track_path.split(@options.path_delimiter) if not (track_path instanceof Array)
+
+    context.auto_track ?= true
+
+    @server.track track_path..., context
+    @_tracked = true
 
 # server which can handle middlewares like express
 class StackServer
@@ -31,11 +40,9 @@ class StackServer
     @path_delimiter = path_delimiter or '.'
 
     @settings = {
-      DEFAULT_SUB_NAME_SPACE: {
-        pres: []
-        methodHash: {}
-        posts: []
-      }
+      pres: []
+      methodHash: {}
+      posts: []
     }
 
     @init(@io, options) if @io?
@@ -44,11 +51,11 @@ class StackServer
 
     @server = new Server(@io, {}, options)
 
-    for sub_name_space, {pres, methodHash} of @settings
+    {methodHash} = @settings
 
-      for path of methodHash
+    for path of methodHash
 
-        @_update(sub_name_space, path)
+      @_update(path)
 
   extend: (baseServer, prefix=null) ->
     return @ if not baseServer?
@@ -63,51 +70,34 @@ class StackServer
         self.methodHash[path] ?= []
         self.methodHash[path] = self.methodHash[path].concat methods
 
-    for sub_name_space, base of baseServer.settings
-      @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
-      _assign @settings[sub_name_space], base
+    _assign @settings, baseServer.settings
 
     @_error = null
 
-    for sub_name_space, {methodHash} of @settings
+    {methodHash} = @settings
 
-      for path of methodHash
+    for path of methodHash
 
-        @_update(sub_name_space, path)
+      @_update(path)
 
-  track: (track_path, context, sub_name_space=DEFAULT_SUB_NAME_SPACE) ->
+  track: (track_path..., context) ->
 
-    @server.channel.to(sub_name_space).emit sub_name_space + '.' + track_path + '_track', context
+    return if track_path.length is 0
+
+    @server.channel.to(track_path[0]).emit track_path.join(@path_delimiter) + '_track', context
 
   error: (@_error) ->
     return @_error
 
-  ns: (sub_name_space) ->
-    return {
-      pre: (args...) =>
-        @pre {sub_name_space}, args...
-      use: (args...) =>
-        @use {sub_name_space}, args...
-    }
-
   pre: (args...) ->
-    sub_name_space = null
 
-    if not (args[0] instanceof Function)
-      {sub_name_space} = args[0] if args[0]
-      args = args[1..]
+    @settings.pres.push method for method in args
 
-    sub_name_space ?= DEFAULT_SUB_NAME_SPACE
+    for path in @settings.methodHash
 
-    @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
-    @settings[sub_name_space].pres.push method for method in args
-
-    for path in @settings[sub_name_space].methodHash
-
-      @_update(sub_name_space, path)
+      @_update(path)
 
   use: (args...) ->
-    sub_name_space = DEFAULT_SUB_NAME_SPACE
     path = ''
     track = false
 
@@ -118,25 +108,22 @@ class StackServer
 
       else if arg instanceof Function
 
-        @settings[sub_name_space] ?= {pres: [], methodHash: {}, posts: []}
-
         if arg.length is 5 # (err, req, res, next, socket) ->
-          @settings[sub_name_space].posts.push arg
+          @settings.posts.push arg
 
         else
-          @settings[sub_name_space].methodHash[path] ?= []
-          @settings[sub_name_space].methodHash[path].push arg
+          @settings.methodHash[path] ?= []
+          @settings.methodHash[path].push arg
 
-        @_update(sub_name_space, path, track)
+        @_update(path, track)
 
       else if typeof(arg) is 'string' or arg instanceof String
         path = arg
 
       else
-        sub_name_space = arg.sub_name_space if arg.sub_name_space?
         track = arg.track if arg.track?
 
-  _update: (sub_name_space, path, track=false) ->
+  _update: (path, track=false) ->
     return if not @server?
 
     self = @
@@ -161,23 +148,27 @@ class StackServer
       req.path = path
       req.options = options ? {}
 
-      sub_name_space = options.sub_name_space or DEFAULT_SUB_NAME_SPACE
-      track_path = options.track_path or path
+      if typeof track is 'boolean' or track instanceof Boolean
+        track_path = paths
+      else if typeof track is 'function' or track instanceof Function
+        track_path = track(req)
+      else
+        track_path = track
 
       responseOptions =
-        sub_name_space: sub_name_space
-        track_path: path
+        path_delimiter: @path_delimiter
+        track_path: track_path
 
       res = new Response(self, responseOptions, null)
 
       if track and not options.auto_tracked_request
         req.__ends__ = [] if not req.__ends__
         req.__ends__.push ->
-          res.track(undefined, {auto_track: true})
+          res.track {auto_track: true}
 
       series = []
 
-      {pres, methodHash, posts} = @settings[sub_name_space] or {}
+      {pres, methodHash, posts} = @settings or {}
       pres ?= []
       _methods = pres.concat(methodHash?[''] or [])
       for len in [0...paths.length]

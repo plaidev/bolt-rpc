@@ -127,7 +127,6 @@ class Cursor extends Emitter
 class TrackCursor extends Cursor
 
   # options.name_space
-  # options.sub_name_space
   # options.track_path
   constructor: (client, method, data, options, handler) ->
 
@@ -146,12 +145,12 @@ class TrackCursor extends Cursor
         handler null, val
 
     # activate tracking
-    {sub_name_space, track_path} = @options
+    {track_path} = @options
     track_path ?= method
-    sub_name_space ?= '__'
+    track_path = track_path.split('.') if not (track_path instanceof Array)
 
-    @client.join sub_name_space
-    @client._socket.on sub_name_space + '.' + track_path + '_track', (trackContext) =>
+    @client.join track_path[0]
+    @client._socket.on track_path.join('.') + '_track', (trackContext) =>
       return if @tracking is false
 
       @update undefined, trackContext
@@ -169,28 +168,20 @@ class TrackCursor extends Cursor
 class TrackClient extends Client
 
   constructor: (io_or_socket, options={}) ->
-    {sub_name_space, track_path} = options
-    @default_sub_name_space = sub_name_space if sub_name_space?
+    {track_path} = options
     @default_track_path = track_path if track_path?
 
     super io_or_socket, options
 
   # track api which return cursor.
-  track: (method, data={}, options={}, handler=null) ->
+  track: (method, data, options={}, handler=null) ->
 
     {options, handler} = __swap_options_and_handler {options, handler}
-    options.sub_name_space ?= @default_sub_name_space if @default_sub_name_space?
     options.track_path ?= @default_track_path if @default_track_path?
 
     cursor = new TrackCursor(@, method, data, options, handler)
 
     return cursor
-
-  send: (method, data, options..., cb) ->
-    _options = options[0] or {}
-    _options.sub_name_space ?= @default_sub_name_space
-    _options.track_path ?= @default_track_path
-    Client.prototype.send.apply @, [method, data, _options, cb]
 
   # track api which return cursor obj.
   get: (method, data={}, options={}) ->
