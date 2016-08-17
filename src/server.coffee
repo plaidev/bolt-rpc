@@ -34,55 +34,26 @@ class Response
 
     @_tracked = true
 
-# server which can handle middlewares like express
-class StackServer
 
-  constructor: (@io=undefined, options={}) ->
+class TrackServer
+
+  constructor: (@io, options) ->
     {path_delimiter} = options
     @path_delimiter = path_delimiter or '.'
 
-    @settings = {
-      pres: []
-      methodHash: {}
-      posts: []
-    }
+    @_methods = {}
 
     @init(@io, options) if @io?
 
-  init: (@io, options={}) ->
+  init: (io, options={}) ->
+
+    @io ?= io
 
     @server = new Server(@io, {}, options)
 
-    {methodHash} = @settings
+    for path, method of @_methods
 
-    for path of methodHash
-
-      @_update(path)
-
-  extend: (baseServer, prefix=null) ->
-    return @ if not baseServer?
-
-    _assign = (self, base) =>
-      self.pres = self.pres.concat base.pres
-      for path, methods of base.methodHash
-        paths = []
-        paths.push prefix if prefix
-        paths.push path if path
-        path = paths.join(@path_delimiter)
-        self.methodHash[path] ?= []
-        self.methodHash[path] = self.methodHash[path].concat methods
-
-    _assign @settings, baseServer.settings
-
-    @_error = null
-
-    {methodHash} = @settings
-
-    for path of methodHash
-
-      @_update(path)
-
-    return @
+      @server.set path, method
 
   track: (track_path..., context) ->
 
@@ -93,7 +64,117 @@ class StackServer
     return
 
   error: (@_error) ->
+
     return @_error
+
+  # method = (req, res, cb, socket) ->
+  set: (path, method) ->
+
+    self = @
+
+    _m = (data, options, next, socket) ->
+
+      # swaps
+      if 'function' is typeof options
+        socket = next
+        next = options
+        options = {}
+
+      # request: clone and setup
+      req = copy(socket.request)
+
+      req.end = (cb) ->
+        req.__ends__ = [] if not req.__ends__
+        req.__ends__.push cb
+
+      req.body = req.data = data
+      req.path = path
+      req.options = options ? {}
+
+      responseOptions =
+        disable_track: if options.auto_tracked_request then true else false
+
+      # response: create
+      res = new Response(self, responseOptions, null)
+
+      # build callback: error handling, force_stop
+      cb = (err, val) ->
+
+        if req.__ends__
+          req.__ends__.map (end) -> end()
+
+        err = null if err is FORCE_STOP
+
+        # custom error handling
+        if err instanceof Error
+
+          if self._error
+            self._error err, req, res, (err) ->
+              err = {message: err.message} if err instanceof Error
+              next err, res.val
+            return
+
+          err = {message: err.message}
+
+        next err, res.val
+
+      # method apply
+      method req, res, cb, socket
+
+    @_methods[path] = _m
+
+    @server.set path, _m if @server?
+
+
+# server which can handle middlewares like express
+class StackServer extends TrackServer
+
+  constructor: (@io=undefined, options={}) ->
+
+    @settings = {
+      pres: []
+      methodHash: {}
+      posts: []
+    }
+
+    super @io, options
+
+  init: (io, options={}) ->
+
+    TrackServer.prototype.init.call @, io, options
+
+    {methodHash} = @settings
+
+    for path of methodHash
+
+      @_update(path)
+
+  extend: (baseServer, prefix=null) ->
+
+    return @ if not baseServer?
+
+    _assign = (self, base) =>
+      self.pres = self.pres.concat base.pres
+
+      for path, methods of base.methodHash
+
+        paths = []
+        paths.push prefix if prefix
+        paths.push path if path
+        path = paths.join(@path_delimiter)
+
+        self.methodHash[path] ?= []
+        self.methodHash[path] = self.methodHash[path].concat methods
+
+    _assign @settings, baseServer.settings
+
+    {methodHash} = @settings
+
+    for path of methodHash
+
+      @_update(path)
+
+    return @
 
   pre: (args...) ->
 
@@ -133,45 +214,21 @@ class StackServer
     return @
 
   _update: (path) ->
-    return if not @server?
-
-    self = @
 
     paths = path.split @path_delimiter
 
-    _m = (data, options, next, socket) =>
+    {pres, methodHash, posts} = @settings or {}
+    pres ?= []
 
-      # swaps
-      if 'function' is typeof options
-        socket = next
-        next = options
-        options = {}
+    _methods = pres.concat(methodHash?[''] or [])
 
-      req = copy(socket.request)
+    for len in [0...paths.length]
+      _path = paths[0..len].join(@path_delimiter)
+      _methods = _methods.concat(methodHash?[_path] or [])
 
-      req.end = (cb) ->
-        req.__ends__ = [] if not req.__ends__
-        req.__ends__.push cb
+    _methods = _methods.concat posts or []
 
-      req.body = req.data = data
-      req.path = path
-      req.options = options ? {}
-
-      responseOptions =
-        disable_track: if options.auto_tracked_request then true else false
-
-      res = new Response(self, responseOptions, null)
-
-      series = []
-
-      {pres, methodHash, posts} = @settings or {}
-      pres ?= []
-      _methods = pres.concat(methodHash?[''] or [])
-      for len in [0...paths.length]
-        _path = paths[0..len].join(@path_delimiter)
-        _methods = _methods.concat(methodHash?[_path] or [])
-
-      _methods = _methods.concat posts or []
+    @set path, (req, res, cb, socket) ->
 
       async.eachSeries _methods, (method, cb) ->
 
@@ -179,30 +236,7 @@ class StackServer
 
         method(req, res, cb, socket)
 
-      , (err, val) ->
-
-        if req.__ends__
-          req.__ends__.map (end) -> end()
-
-        err = null if err is FORCE_STOP
-
-        # custom error handling
-        if err instanceof Error
-          if self._error
-            self._error err, req, res, (err) ->
-              err = {message: err.message} if err instanceof Error
-              next err, res.val
-            return
-
-          err = {message: err.message}
-
-        next err, res.val
-
-    @server.set path, _m
-
-  # obsolete
-  setupServer: (args...) ->
-    @init args...
+      , cb
 
 
 module.exports = StackServer
