@@ -23,6 +23,8 @@ describe "Basic RPC Function", ->
     pre = sinon.spy (req, res, next) ->
       next()
 
+    end = sinon.spy () ->
+
     validate = sinon.spy (req, res, next) ->
       return next(new Error('requied parameter: a')) if not req.data?.a?
       next()
@@ -31,7 +33,7 @@ describe "Basic RPC Function", ->
     server.pre pre
 
     server.pre (req, res, next) ->
-      req.end () ->
+      req.end end
       next()
 
     # validate
@@ -50,6 +52,7 @@ describe "Basic RPC Function", ->
       assert not err
       assert val is 3
       assert pre.called
+      assert end.called
       assert validate.called
       done()
 
