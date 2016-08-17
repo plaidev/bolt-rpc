@@ -60,10 +60,6 @@ class TrackServer
 
     return
 
-  error: (@_error) ->
-
-    return @_error
-
   # method = (req, res, cb, socket) ->
   set: (path, method) ->
 
@@ -105,6 +101,7 @@ class TrackServer
         # custom error handling
         if err instanceof Error
 
+          # obsolute
           if self._error
             self._error err, req, res, (err) ->
               err = {message: err.message} if err instanceof Error
@@ -122,6 +119,12 @@ class TrackServer
 
     @server.set path, _m if @server?
 
+  # obsolute
+  # replace `app.use (err, req, res, next, socket) ->`
+  error: (@_error) ->
+
+    return @_error
+
 
 # server which can handle middlewares like express
 class StackServer extends TrackServer
@@ -129,7 +132,7 @@ class StackServer extends TrackServer
   constructor: (@io=undefined, options={}) ->
 
     @settings = {
-      pres: []
+      pres: [] # obsolete
       methodHash: {}
       posts: []
     }
@@ -160,14 +163,6 @@ class StackServer extends TrackServer
         self.methodHash[path] = self.methodHash[path].concat methods
 
     _assign @settings, baseServer.settings
-
-    @_updateAll()
-
-    return @
-
-  pre: (args...) ->
-
-    @settings.pres.push method for method in args
 
     @_updateAll()
 
@@ -224,8 +219,7 @@ class StackServer extends TrackServer
 
     paths = path.split @path_delimiter
 
-    {pres, methodHash, posts} = @settings or {}
-    pres ?= []
+    {pres, methodHash, posts} = @settings
 
     _methods = pres.concat(methodHash?[''] or [])
 
@@ -244,6 +238,15 @@ class StackServer extends TrackServer
         method(req, res, cb, socket)
 
       , cb
+
+  # obsolete
+  pre: (args...) ->
+
+    @settings.pres.push method for method in args
+
+    @_updateAll()
+
+    return @
 
 
 module.exports = StackServer
