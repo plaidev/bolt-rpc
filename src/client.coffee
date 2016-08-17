@@ -174,6 +174,11 @@ class TrackClient extends Client
 
     super io_or_socket, options
 
+    track_path = track_path?.split?('.') if not (track_path instanceof Array)
+    return if not track_path or track_path.length is 0
+
+    @join track_path[0]
+
   # track api which return cursor.
   track: (method, data, options={}, handler=null) ->
 

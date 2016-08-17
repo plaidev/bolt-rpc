@@ -244,6 +244,13 @@
         this.default_track_path = track_path;
       }
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
+      if (!(track_path instanceof Array)) {
+        track_path = track_path != null ? typeof track_path.split === "function" ? track_path.split('.') : void 0 : void 0;
+      }
+      if (!track_path || track_path.length === 0) {
+        return;
+      }
+      this.join(track_path[0]);
     }
 
     TrackClient.prototype.track = function(method, data, options, handler) {
