@@ -87,7 +87,7 @@
     };
 
     StackServer.prototype.extend = function(baseServer, prefix) {
-      var methodHash, path, _assign, _results;
+      var methodHash, path, _assign;
       if (prefix == null) {
         prefix = null;
       }
@@ -121,11 +121,10 @@
       _assign(this.settings, baseServer.settings);
       this._error = null;
       methodHash = this.settings.methodHash;
-      _results = [];
       for (path in methodHash) {
-        _results.push(this._update(path));
+        this._update(path);
       }
-      return _results;
+      return this;
     };
 
     StackServer.prototype.track = function() {
@@ -134,7 +133,7 @@
       if (track_path.length === 0) {
         return;
       }
-      return this.server.channel.to(track_path[0]).emit(track_path.join(this.path_delimiter) + '_track', context);
+      this.server.channel.to(track_path[0]).emit(track_path.join(this.path_delimiter) + '_track', context);
     };
 
     StackServer.prototype.error = function(_error) {
@@ -143,30 +142,28 @@
     };
 
     StackServer.prototype.pre = function() {
-      var args, method, path, _i, _j, _len, _len1, _ref, _results;
+      var args, method, path, _i, _j, _len, _len1, _ref;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         method = args[_i];
         this.settings.pres.push(method);
       }
       _ref = this.settings.methodHash;
-      _results = [];
       for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
         path = _ref[_j];
-        _results.push(this._update(path));
+        this._update(path);
       }
-      return _results;
+      return this;
     };
 
     StackServer.prototype.use = function() {
-      var arg, args, path, _base, _i, _len, _results;
+      var arg, args, path, _base, _i, _len;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       path = '';
-      _results = [];
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         arg = args[_i];
         if (arg instanceof StackServer) {
-          _results.push(this.extend(arg, path));
+          this.extend(arg, path);
         } else if (arg instanceof Function) {
           if (arg.length === 5) {
             this.settings.posts.push(arg);
@@ -176,14 +173,14 @@
             }
             this.settings.methodHash[path].push(arg);
           }
-          _results.push(this._update(path));
+          this._update(path);
         } else if (typeof arg === 'string' || arg instanceof String) {
-          _results.push(path = arg);
+          path = arg;
         } else {
-          _results.push(console.log('warning, invalid argument:', arg));
+          console.log('warning, invalid argument:', arg);
         }
       }
-      return _results;
+      return this;
     };
 
     StackServer.prototype._update = function(path) {

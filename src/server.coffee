@@ -82,11 +82,15 @@ class StackServer
 
       @_update(path)
 
+    return @
+
   track: (track_path..., context) ->
 
     return if track_path.length is 0
 
     @server.channel.to(track_path[0]).emit track_path.join(@path_delimiter) + '_track', context
+
+    return
 
   error: (@_error) ->
     return @_error
@@ -98,6 +102,8 @@ class StackServer
     for path in @settings.methodHash
 
       @_update(path)
+
+    return @
 
   use: (args...) ->
     path = ''
@@ -123,6 +129,8 @@ class StackServer
 
       else
         console.log 'warning, invalid argument:', arg
+
+    return @
 
   _update: (path) ->
     return if not @server?
