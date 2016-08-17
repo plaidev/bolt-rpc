@@ -19,18 +19,14 @@ class Response
     @val = val
     @_cb(FORCE_STOP, val)
 
-  track: (track_path..., context) ->
+  track: (track_path, context={}) ->
     return if @_tracked
 
-    if (typeof context is 'string') or (context instanceof String)
-      track_path.push context
-      context = {}
-
-    return if track_path.length is 0
+    return if not track_path
 
     context.auto_track ?= true
 
-    @server.track track_path..., context
+    @server.track track_path, context
 
     @_tracked = true
 
@@ -55,11 +51,12 @@ class TrackServer
 
       @server.set path, method
 
-  track: (track_path..., context) ->
+  track: (track_path, context={}) ->
 
-    return if track_path.length is 0
+    return if not track_path
 
-    @server.channel.to(track_path[0]).emit track_path.join(@path_delimiter) + '_track', context
+    # TODO: support 'room != track_path' case?
+    @server.channel.to(track_path).emit track_path + '_track', context
 
     return
 
