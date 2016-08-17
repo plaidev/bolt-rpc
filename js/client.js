@@ -1,7 +1,8 @@
 (function() {
-  var Client, Cursor, Emitter, TrackClient, TrackCursor, buildChain, __swap_options_and_cb,
+  var Client, Cursor, Emitter, TrackClient, TrackCursor, async, __swap_options_and_handler,
     __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
 
   try {
     Emitter = require('component-emitter');
@@ -11,17 +12,19 @@
 
   Client = require('minimum-rpc').Client;
 
-  __swap_options_and_cb = function(_arg) {
-    var cb, options;
-    options = _arg.options, cb = _arg.cb;
+  async = require('async');
+
+  __swap_options_and_handler = function(_arg) {
+    var handler, options;
+    options = _arg.options, handler = _arg.handler;
     if ('function' === typeof options) {
       return {
-        cb: options,
-        options: {}
+        handler: options,
+        options: handler || {}
       };
     }
     return {
-      cb: cb,
+      handler: handler,
       options: options
     };
   };
@@ -29,30 +32,25 @@
   Cursor = (function(_super) {
     __extends(Cursor, _super);
 
-    function Cursor(method, data, options, cb, client) {
-      var track_namespace, _ref;
+    function Cursor(client, method, data, options, handler) {
+      this.client = client;
       this.method = method;
       this.data = data;
       this.options = options;
-      this.cb = cb;
-      this.client = client;
-      if ('function' === typeof this.options) {
-        this.client = this.cb;
-        this.cb = this.options;
-        this.options = {};
-      }
       this.val = null;
       this.err = null;
-      this.mdls = [];
       this.calling = false;
       this.updateRequest = false;
-      if ((_ref = this.options) != null ? _ref.track : void 0) {
-        track_namespace = this.options.track_namespace || '_';
-        this.client._socket.on(track_namespace + '_track', (function(_this) {
-          return function(data) {
-            return _this.update(void 0, data);
-          };
-        })(this));
+      this._pres = [];
+      this._mdls = [];
+      this._posts = [];
+      if (handler) {
+        this.on('error', function(err) {
+          return handler(err);
+        });
+        this.on('end', function(val) {
+          return handler(null, val);
+        });
       }
     }
 
@@ -66,48 +64,141 @@
       return this;
     };
 
-    Cursor.prototype.update = function(_data) {
-      if (_data !== void 0) {
-        this.data = _data;
+    Cursor.prototype.update = function(data, context) {
+      if (data == null) {
+        data = void 0;
       }
-      if (this.data == null) {
-        return;
+      if (context == null) {
+        context = {};
+      }
+      if (data !== void 0) {
+        this.data = data;
+      }
+      if (this.data === void 0) {
+        return this;
       }
       if (this.calling) {
-        this.updateRequest = true;
+        if ((this.updateRequest == null) && ((context != null ? context.auto_track : void 0) != null)) {
+          this.updateRequest = {
+            auto_track: context != null ? context.auto_track : void 0
+          };
+        } else {
+          this.updateRequest = {};
+        }
         return this;
       }
       this.calling = true;
-      this.updateRequest = false;
-      this.client.send(this.method, this.data, this.options, (function(_this) {
+      this._query_with_middlewares(this.data, context, (function(_this) {
         return function(err, val) {
-          var mdl, _i, _len, _ref;
-          _this.calling = false;
           _this.err = err || null;
           _this.val = val || null;
+          _this.calling = false;
           if (err) {
             _this.emit('error', err);
           } else {
-            _ref = _this.mdls;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              mdl = _ref[_i];
-              val = mdl(val);
-            }
             _this.emit('end', val);
           }
-          if (_this.cb) {
-            _this.cb(err, val);
-          }
           if (_this.updateRequest) {
-            return _this.update();
+            context = _this.updateRequest;
+            _this.updateRequest = null;
+            return setTimeout(function() {
+              return _this.update(void 0, context);
+            }, 0);
           }
         };
       })(this));
       return this;
     };
 
+    Cursor.prototype._pre_methods = function(data, context, cb) {
+      return async.waterfall([
+        function(next) {
+          return next(null, data, context);
+        }
+      ].concat(this._pres), cb);
+    };
+
+    Cursor.prototype._post_methods = function(val, cb) {
+      return async.waterfall([
+        function(next) {
+          return next(null, val);
+        }
+      ].concat(this._posts), cb);
+    };
+
+    Cursor.prototype._query_with_middlewares = function(data, context, cb) {
+      return this._pre_methods(data, context, (function(_this) {
+        return function(err, data) {
+          var k, options, v, _ref;
+          if (err) {
+            return cb(err);
+          }
+          options = {};
+          _ref = _this.options;
+          for (k in _ref) {
+            if (!__hasProp.call(_ref, k)) continue;
+            v = _ref[k];
+            options[k] = v;
+          }
+          if (context != null ? context.auto_track : void 0) {
+            options.auto_tracked_request = true;
+          }
+          return _this.client.send(_this.method, data, options, function(err, val) {
+            var e, mdl, _i, _len, _ref1;
+            if (err) {
+              return cb(err);
+            }
+            try {
+              _ref1 = _this._mdls;
+              for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                mdl = _ref1[_i];
+                val = mdl(val);
+              }
+            } catch (_error) {
+              e = _error;
+              return cb(err);
+            }
+            return _this._post_methods(val, cb);
+          });
+        };
+      })(this));
+    };
+
     Cursor.prototype.map = function(mdl) {
-      this.mdls.push(mdl);
+      if (mdl == null) {
+        mdl = function(val) {
+          return val;
+        };
+      }
+      return this._mdls.push(mdl);
+    };
+
+    Cursor.prototype.pre = function(func) {
+      if (func == null) {
+        func = function(data, context, next) {
+          return next();
+        };
+      }
+      this._pres.push(function(data, context, cb) {
+        return func(data, context, function() {
+          var args, err;
+          err = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+          if (args.length === 0) {
+            return cb(err, data, context);
+          }
+          return cb.apply(null, [err].concat(__slice.call(args)));
+        });
+      });
+      return this;
+    };
+
+    Cursor.prototype.post = function(func) {
+      if (func == null) {
+        func = function(val, next) {
+          return next(null, val);
+        };
+      }
+      this._posts.push(func);
       return this;
     };
 
@@ -115,91 +206,34 @@
 
   })(Emitter);
 
-  buildChain = function(funcs, cb) {
-    var cur, err, next, val, _bind, _i, _len, _ref;
-    err = null;
-    val = void 0;
-    _bind = function(cur, next) {
-      return function(_err, _val) {
-        if (_err) {
-          err = _err;
-        }
-        if (_val) {
-          val = _val;
-        }
-        return cur(err, val, next);
-      };
-    };
-    next = function(err, val, next) {
-      if (cb) {
-        return cb(err, val);
-      }
-    };
-    _ref = Array.prototype.concat(funcs).reverse();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      cur = _ref[_i];
-      next = _bind(cur, next);
-    }
-    return next;
-  };
-
   TrackCursor = (function(_super) {
     __extends(TrackCursor, _super);
 
-    function TrackCursor(method, data, options, cb, client) {
-      var _cb;
-      if ('function' === typeof options) {
-        client = cb;
-        cb = options;
-        options = {};
-      }
-      this.pres = [];
-      this.posts = [];
-      this.tracking = true;
-      _cb = null;
-      if (cb != null) {
-        _cb = (function(_this) {
-          return function(err, val) {
-            var next;
-            next = buildChain(_this.posts, cb);
-            return next(err, val);
-          };
-        })(this);
-      }
-      TrackCursor.__super__.constructor.call(this, method, data, options, _cb, client);
-    }
-
-    TrackCursor.prototype.pre = function(func) {
-      this.pres.push(func);
-      return this;
-    };
-
-    TrackCursor.prototype.post = function(func) {
-      this.posts.push(func);
-      return this;
-    };
-
-    TrackCursor.prototype.track = function(flag) {
-      return this.tracking = flag;
-    };
-
-    TrackCursor.prototype.update = function(_data, trackContext) {
-      var next;
-      if (trackContext === void 0) {
-        return TrackCursor.__super__.update.call(this, _data);
-      }
-      if (this.tracking === false) {
+    function TrackCursor(client, method, data, options, handler, track_path) {
+      TrackCursor.__super__.constructor.call(this, client, method, data, options, handler);
+      this.tracking = false;
+      if (!track_path) {
         return;
       }
-      next = buildChain(this.pres, (function(_this) {
-        return function(err, trackContext) {
-          if (err) {
+      this.client.join(track_path);
+      this.client._socket.on(track_path + '_track', (function(_this) {
+        return function(trackContext) {
+          if (!_this.tracking) {
             return;
           }
-          return TrackCursor.__super__.update.call(_this, _data);
+          return _this.update(void 0, trackContext);
         };
       })(this));
-      return next(null, trackContext);
+    }
+
+    TrackCursor.prototype.track = function(flag) {
+      var old;
+      old = this.tracking;
+      this.tracking = flag;
+      if (!old && this.tracking) {
+        this.update();
+      }
+      return this;
     };
 
     return TrackCursor;
@@ -210,35 +244,41 @@
     __extends(TrackClient, _super);
 
     function TrackClient(io_or_socket, options) {
+      if (options == null) {
+        options = {};
+      }
+      this.track_path = options.track_path;
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
     }
 
-    TrackClient.prototype.track = function(method, data, options, cb) {
-      var cursor, _ref;
+    TrackClient.prototype.track = function(method, data, options, handler) {
+      var cursor, track_path, _ref;
       if (data == null) {
-        data = null;
+        data = void 0;
       }
       if (options == null) {
-        options = null;
+        options = {};
       }
-      if (cb == null) {
-        cb = null;
+      if (handler == null) {
+        handler = null;
       }
-      _ref = __swap_options_and_cb({
+      _ref = __swap_options_and_handler({
         options: options,
-        cb: cb
-      }), options = _ref.options, cb = _ref.cb;
-      cursor = new TrackCursor(method, data, options, cb, this);
-      cursor.update();
+        handler: handler
+      }), handler = _ref.handler, options = _ref.options;
+      track_path = options.track_path || this.track_path || method;
+      cursor = new TrackCursor(this, method, data, options, handler, track_path);
       return cursor;
     };
 
-    TrackClient.prototype.get = function(method, data, options, cb) {
-      var cursor, res, _ref;
-      _ref = __swap_options_and_cb({
-        options: options,
-        cb: cb
-      }), options = _ref.options, cb = _ref.cb;
+    TrackClient.prototype.get = function(method, data, options) {
+      var cursor, res;
+      if (data == null) {
+        data = {};
+      }
+      if (options == null) {
+        options = {};
+      }
       res = {
         err: null,
         val: null
@@ -247,6 +287,7 @@
         res.err = err;
         return res.val = val;
       });
+      cursor.track(true);
       return res;
     };
 
