@@ -9,25 +9,30 @@ async = require 'async'
 
 __swap_options_and_handler = ({options, handler}) ->
   if 'function' is typeof options
-    return {handler: options, options: {}}
+    return {handler: options, options: handler or {}}
   return {handler, options}
 
 
 # cursor class
 class Cursor extends Emitter
 
-  constructor: (@client, @method, @data, @options={}) ->
+  constructor: (@client, @method, @data, @options, handler) ->
 
     @val = null
     @err = null
     @calling = false
     @updateRequest = false
 
-    # @pres and @posts are async methods
-    # @pres -> <client.send> -> @mdls -> @postsの順に実行
-    @_mdls = []
-    @_pres = []
-    @_posts = []
+    # @pres -> <client.send> -> @mdls -> @posts
+    @_pres = []  # (data, context, next) -> next(null, data, context)
+    @_mdls = []  # (val) -> val
+    @_posts = [] # (val, next) -> next(null, val)
+
+    if handler
+      @on 'error', (err) ->
+        handler err
+      @on 'end', (val) ->
+        handler null, val
 
   # error handler
   error: (cb) ->
@@ -40,13 +45,16 @@ class Cursor extends Emitter
     return @
 
   # querying
-  update: (data, context) ->
-    # update query data
+  update: (data=undefined, context={}) ->
+    # update query data if exists
     @data = data if data isnt undefined
+
+    # not update if @data is undefined.
     return @ if @data is undefined
 
-    # reject if now calling, but keep data and request.
+    # reject if now calling, but keep request, data and context.
     if @calling
+
       # keep auto track context
       if not @updateRequest? and context?.auto_track?
         @updateRequest = {auto_track: context?.auto_track}
@@ -110,10 +118,11 @@ class Cursor extends Emitter
         @_post_methods val, cb
 
   # sync middlewares
-  map: (mdl) ->
+  map: (mdl=(val) -> val) ->
     @_mdls.push(mdl)
 
-  pre: (func) ->
+  pre: (func=(data, context, next) -> next()) ->
+    # for back compatibility. i.e. `(data, context, next) -> next()`
     @_pres.push (data, context, cb) ->
       func data, context, (err, args...) ->
         if args.length is 0
@@ -121,7 +130,7 @@ class Cursor extends Emitter
         cb err, args...
     return @
 
-  post: (func) ->
+  post: (func=(val, next) -> next(null, val)) ->
     @_posts.push func
     return @
 
@@ -129,33 +138,20 @@ class Cursor extends Emitter
 # cursor with track filters
 class TrackCursor extends Cursor
 
-  # options.name_space
-  # options.track_path
-  constructor: (client, method, data, options, handler) ->
+  constructor: (client, method, data, options, handler, track_path) ->
 
-    # swaps
-    {options, handler} = __swap_options_and_handler {options, handler}
+    super client, method, data, options, handler
 
     # enable update by track
     @tracking = false
 
-    super(client, method, data, options)
-
-    if handler
-      @on 'error', (err) ->
-        handler err
-      @on 'end', (val) ->
-        handler null, val
-
     # activate tracking
-    {track_path} = @options
-    track_path ?= method
-    track_path = track_path.split?('.') if not (track_path instanceof Array)
+    return if not track_path
 
-    return if not track_path or track_path.length is 0
+    # TODO: support 'room != track_path' case?
+    @client.join track_path
 
-    @client.join track_path[0]
-    @client._socket.on track_path.join('.') + '_track', (trackContext) =>
+    @client._socket.on track_path + '_track', (trackContext) =>
       return if not @tracking
       @update undefined, trackContext
 
@@ -172,23 +168,18 @@ class TrackCursor extends Cursor
 class TrackClient extends Client
 
   constructor: (io_or_socket, options={}) ->
-    {track_path} = options
-    @default_track_path = track_path if track_path?
+    {@track_path} = options
 
     super io_or_socket, options
 
-    track_path = track_path?.split?('.') if not (track_path instanceof Array)
-    return if not track_path or track_path.length is 0
-
-    @join track_path[0]
-
   # track api which return cursor.
-  track: (method, data, options={}, handler=null) ->
+  track: (method, data=undefined, options={}, handler=null) ->
 
-    {options, handler} = __swap_options_and_handler {options, handler}
-    options.track_path ?= @default_track_path if @default_track_path?
+    {handler, options} = __swap_options_and_handler {options, handler}
 
-    cursor = new TrackCursor(@, method, data, options, handler)
+    track_path = options.track_path or @track_path or method
+
+    cursor = new TrackCursor(@, method, data, options, handler, track_path)
 
     return cursor
 
