@@ -140,11 +140,7 @@ class StackServer extends TrackServer
 
     TrackServer.prototype.init.call @, io, options
 
-    {methodHash} = @settings
-
-    for path of methodHash
-
-      @_update(path)
+    @_updateAll()
 
   extend: (baseServer, prefix=null) ->
 
@@ -165,11 +161,7 @@ class StackServer extends TrackServer
 
     _assign @settings, baseServer.settings
 
-    {methodHash} = @settings
-
-    for path of methodHash
-
-      @_update(path)
+    @_updateAll()
 
     return @
 
@@ -177,12 +169,23 @@ class StackServer extends TrackServer
 
     @settings.pres.push method for method in args
 
-    for path in @settings.methodHash
-
-      @_update(path)
+    @_updateAll()
 
     return @
 
+  # add default middleware ... `(req, res, next, socket) ->`
+  # > app.use method
+  # add method ... `(req, res, next, socket) ->`
+  # > app.use 'method', method
+  # add named middleware and method
+  # > app.use 'method', middleware, method
+  # extend app.
+  # > app.use subApp
+  # add subApp with prefix
+  # > app.use 'submodule', subApp
+  # add error handler ... `(err, req, res, next, socket) ->`
+  # > app.use handler
+  # ... see unit test cases.
   use: (args...) ->
     path = ''
 
@@ -195,12 +198,12 @@ class StackServer extends TrackServer
 
         if arg.length is 5 # (err, req, res, next, socket) ->
           @settings.posts.push arg
+          @_updateAll()
 
         else
           @settings.methodHash[path] ?= []
           @settings.methodHash[path].push arg
-
-        @_update(path)
+          @_update(path)
 
       else if typeof(arg) is 'string' or arg instanceof String
         path = arg
@@ -209,6 +212,13 @@ class StackServer extends TrackServer
         console.log 'warning, invalid argument:', arg
 
     return @
+
+  _updateAll: ->
+    {methodHash} = @settings
+
+    for path of methodHash
+
+      @_update(path)
 
   _update: (path) ->
 
