@@ -43,13 +43,16 @@ class Cursor extends Emitter
   update: (data, context) ->
     # update query data
     @data = data if data isnt undefined
-    return if @data is undefined
+    return @ if @data is undefined
 
     # reject if now calling, but keep data and request.
     if @calling
-      @updateRequest = {}
-      if context?.auto_track
-        @updateRequest.auto_track ?= context.auto_track
+      # keep auto track context
+      if not @updateRequest? and context?.auto_track?
+        @updateRequest = {auto_track: context?.auto_track}
+      else
+        @updateRequest = {}
+
       return @
 
     @calling = true
@@ -70,7 +73,7 @@ class Cursor extends Emitter
       # update more once if requested
       if @updateRequest
         context = @updateRequest
-        @updateRequest = false
+        @updateRequest = null
         setTimeout =>
           @update undefined, context
         , 0
