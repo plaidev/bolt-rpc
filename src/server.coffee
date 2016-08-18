@@ -9,7 +9,7 @@ FORCE_STOP = "FORCE_STOP"
 # mock response object like express
 class Response
   constructor: (@server, @options, @_cb) ->
-    @_tracked = if @options.disable_track then true else false
+    @_tracked = @options.disable_track is true
 
   send: (val) ->
     @val = val
@@ -34,8 +34,6 @@ class Response
 class TrackServer
 
   constructor: (@io, options) ->
-    {path_delimiter} = options
-    @path_delimiter = path_delimiter or '.'
 
     @_methods = {}
 
@@ -85,7 +83,7 @@ class TrackServer
       req.options = options ? {}
 
       responseOptions =
-        disable_track: if options.auto_tracked_request then true else false
+        disable_track: options?.auto_tracked_request
 
       # response: create
       res = new Response(self, responseOptions, null)
@@ -130,6 +128,9 @@ class TrackServer
 class StackServer extends TrackServer
 
   constructor: (@io=undefined, options={}) ->
+
+    {path_delimiter} = options
+    @path_delimiter = path_delimiter or '/'
 
     @settings = {
       pres: [] # obsolete

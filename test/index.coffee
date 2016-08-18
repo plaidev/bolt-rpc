@@ -383,7 +383,7 @@ describe 'advanced', ->
 
     it 'sub module callable', (done) ->
 
-      client.send 'submodule.method', {a: 'A'}, (err, val) ->
+      client.send 'submodule/method', {a: 'A'}, (err, val) ->
         assert not err
         assert val.success
         assert val.data.a is 'A'
@@ -398,7 +398,7 @@ describe 'advanced', ->
 
     it 'submodule.method call order', (done) ->
 
-      client.send 'submodule.method', {}, (err, val) =>
+      client.send 'submodule/method', {}, (err, val) =>
         assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'middleware3', 'method']
         done()
 
@@ -452,7 +452,9 @@ describe 'track cursor', ->
         assert called < 3
         if called is 2
           cursor.track false
-          done()
+          setTimeout ->
+            done()
+          , 100
       .track true
       .update {}
 

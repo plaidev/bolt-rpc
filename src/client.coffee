@@ -8,8 +8,8 @@ catch
 async = require 'async'
 
 __swap_options_and_handler = ({options, handler}) ->
-  if 'function' is typeof options
-    return {handler: options, options: handler or {}}
+  if typeof options is 'function' or options instanceof Function
+    return {handler: options, options: handler ? {}}
   return {handler, options}
 
 
