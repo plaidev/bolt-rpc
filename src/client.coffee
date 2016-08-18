@@ -21,7 +21,7 @@ class Cursor extends Emitter
     @val = null
     @err = null
     @calling = false
-    @updateRequest = false
+    @updateRequest = null
 
     # @pres -> <client.send> -> @mdls -> @posts
     @_pres = []  # (data, context, next) -> next(null, data, context)
