@@ -17,7 +17,7 @@
       this.server = server;
       this.options = options;
       this._cb = _cb;
-      this._tracked = this.options.disable_track ? true : false;
+      this._tracked = this.options.disable_track === true;
     }
 
     Response.prototype.send = function(val) {
@@ -53,10 +53,7 @@
 
   TrackServer = (function() {
     function TrackServer(io, options) {
-      var path_delimiter;
       this.io = io;
-      path_delimiter = options.path_delimiter;
-      this.path_delimiter = path_delimiter || '.';
       this._methods = {};
       if (this.io != null) {
         this.init(this.io, options);
@@ -112,7 +109,7 @@
         req.path = path;
         req.options = options != null ? options : {};
         responseOptions = {
-          disable_track: options.auto_tracked_request ? true : false
+          disable_track: options != null ? options.auto_tracked_request : void 0
         };
         res = new Response(self, responseOptions, null);
         cb = function(err, val) {
@@ -163,13 +160,16 @@
     __extends(StackServer, _super);
 
     function StackServer(io, options) {
+      var path_delimiter;
       this.io = io != null ? io : void 0;
       if (options == null) {
         options = {};
       }
+      path_delimiter = options.path_delimiter;
+      this.path_delimiter = path_delimiter || '/';
+      this._nodes = [];
       this.settings = {
         pres: [],
-        methodHash: {},
         posts: []
       };
       StackServer.__super__.constructor.call(this, this.io, options);
@@ -180,63 +180,41 @@
         options = {};
       }
       TrackServer.prototype.init.call(this, io, options);
-      return this._updateAll();
-    };
-
-    StackServer.prototype.extend = function(baseServer, prefix) {
-      var _assign;
-      if (prefix == null) {
-        prefix = null;
-      }
-      if (baseServer == null) {
-        return this;
-      }
-      _assign = (function(_this) {
-        return function(self, base) {
-          var methods, path, paths, _base, _ref, _results;
-          self.pres = self.pres.concat(base.pres);
-          _ref = base.methodHash;
-          _results = [];
-          for (path in _ref) {
-            methods = _ref[path];
-            paths = [];
-            if (prefix) {
-              paths.push(prefix);
-            }
-            if (path) {
-              paths.push(path);
-            }
-            path = paths.join(_this.path_delimiter);
-            if ((_base = self.methodHash)[path] == null) {
-              _base[path] = [];
-            }
-            _results.push(self.methodHash[path] = self.methodHash[path].concat(methods));
-          }
-          return _results;
-        };
-      })(this);
-      _assign(this.settings, baseServer.settings);
-      this._updateAll();
-      return this;
+      return this._update();
     };
 
     StackServer.prototype.use = function() {
-      var arg, args, path, _base, _i, _len;
+      var arg, args, name, path, _i, _len, _path;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       path = '';
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         arg = args[_i];
         if (arg instanceof StackServer) {
-          this.extend(arg, path);
+          this.settings.pres = this.settings.pres.concat(arg.settings.pres);
+          this.settings.posts = arg.settings.posts.concat(this.settings.posts);
+          this._nodes.push({
+            name: path,
+            nodes: arg._nodes
+          });
+          for (name in arg._methods) {
+            _path = [];
+            if (path) {
+              _path.push(path);
+            }
+            if (name) {
+              _path.push(name);
+            }
+            this._update(_path.join('/'));
+          }
         } else if (arg instanceof Function) {
           if (arg.length === 5) {
             this.settings.posts.push(arg);
-            this._updateAll();
+            this._update();
           } else {
-            if ((_base = this.settings.methodHash)[path] == null) {
-              _base[path] = [];
-            }
-            this.settings.methodHash[path].push(arg);
+            this._nodes.push({
+              name: path,
+              method: arg
+            });
             this._update(path);
           }
         } else if (typeof arg === 'string' || arg instanceof String) {
@@ -248,32 +226,48 @@
       return this;
     };
 
-    StackServer.prototype._updateAll = function() {
-      var methodHash, path, _results;
-      methodHash = this.settings.methodHash;
-      _results = [];
-      for (path in methodHash) {
-        _results.push(this._update(path));
-      }
-      return _results;
+    StackServer.prototype._update = function(path) {
+      var paths;
+      paths = path ? [path] : Object.keys(this._methods);
+      return paths.forEach((function(_this) {
+        return function(path) {
+          var methods, posts, pres, _methods, _ref;
+          _methods = _this._traverse('/' + path, _this._nodes);
+          _ref = _this.settings, pres = _ref.pres, posts = _ref.posts;
+          methods = pres.concat(_methods).concat(posts);
+          return _this.set(path, function(req, res, cb, socket) {
+            return async.eachSeries(methods, function(method, cb) {
+              res._cb = cb;
+              return method(req, res, cb, socket);
+            }, cb);
+          });
+        };
+      })(this));
     };
 
-    StackServer.prototype._update = function(path) {
-      var len, methodHash, paths, posts, pres, _i, _methods, _path, _ref, _ref1;
-      paths = path.split(this.path_delimiter);
-      _ref = this.settings, pres = _ref.pres, methodHash = _ref.methodHash, posts = _ref.posts;
-      _methods = pres.concat((methodHash != null ? methodHash[''] : void 0) || []);
-      for (len = _i = 0, _ref1 = paths.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; len = 0 <= _ref1 ? ++_i : --_i) {
-        _path = paths.slice(0, +len + 1 || 9e9).join(this.path_delimiter);
-        _methods = _methods.concat((methodHash != null ? methodHash[_path] : void 0) || []);
+    StackServer.prototype._traverse = function(path, nodes, basePath) {
+      var currentPath, methods, node, _i, _len, _methods;
+      if (basePath == null) {
+        basePath = '';
       }
-      _methods = _methods.concat(posts || []);
-      return this.set(path, function(req, res, cb, socket) {
-        return async.eachSeries(_methods, function(method, cb) {
-          res._cb = cb;
-          return method(req, res, cb, socket);
-        }, cb);
-      });
+      methods = [];
+      for (_i = 0, _len = nodes.length; _i < _len; _i++) {
+        node = nodes[_i];
+        currentPath = basePath;
+        if (node.name) {
+          currentPath += this.path_delimiter + node.name;
+        }
+        if (path !== currentPath && !path.startsWith(currentPath + '/')) {
+          continue;
+        }
+        if ('nodes' in node) {
+          _methods = this._traverse(path, node.nodes, currentPath);
+          methods = methods.concat(_methods);
+        } else if ('method' in node) {
+          methods.push(node.method);
+        }
+      }
+      return methods;
     };
 
     StackServer.prototype.pre = function() {
@@ -283,7 +277,7 @@
         method = args[_i];
         this.settings.pres.push(method);
       }
-      this._updateAll();
+      this._update();
       return this;
     };
 

@@ -17,10 +17,10 @@
   __swap_options_and_handler = function(_arg) {
     var handler, options;
     options = _arg.options, handler = _arg.handler;
-    if ('function' === typeof options) {
+    if (typeof options === 'function' || options instanceof Function) {
       return {
         handler: options,
-        options: handler || {}
+        options: handler != null ? handler : {}
       };
     }
     return {
@@ -40,7 +40,7 @@
       this.val = null;
       this.err = null;
       this.calling = false;
-      this.updateRequest = false;
+      this.updateRequest = null;
       this._pres = [];
       this._mdls = [];
       this._posts = [];
