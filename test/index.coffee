@@ -412,7 +412,6 @@ describe 'advanced', ->
 
       client.send 'submodule', {}, (err, val) =>
         assert err
-        console.log @_order.returnValues, err
         assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'default']
         done()
 

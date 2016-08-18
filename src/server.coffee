@@ -132,9 +132,10 @@ class StackServer extends TrackServer
     {path_delimiter} = options
     @path_delimiter = path_delimiter or '/'
 
+    @_nodes = []
+
     @settings = {
       pres: [] # obsolete
-      methodHash: {}
       posts: []
     }
 
@@ -144,30 +145,7 @@ class StackServer extends TrackServer
 
     TrackServer.prototype.init.call @, io, options
 
-    @_updateAll()
-
-  extend: (baseServer, prefix=null) ->
-
-    return @ if not baseServer?
-
-    _assign = (self, base) =>
-      self.pres = self.pres.concat base.pres
-
-      for path, methods of base.methodHash
-
-        paths = []
-        paths.push prefix if prefix
-        paths.push path if path
-        path = paths.join(@path_delimiter)
-
-        self.methodHash[path] ?= []
-        self.methodHash[path] = self.methodHash[path].concat methods
-
-    _assign @settings, baseServer.settings
-
-    @_updateAll()
-
-    return @
+    @_update()
 
   # add default middleware ... `(req, res, next, socket) ->`
   # > app.use method
@@ -188,17 +166,26 @@ class StackServer extends TrackServer
     for arg in args
 
       if arg instanceof StackServer
-        @extend arg, path
+        @settings.pres = @settings.pres.concat arg.settings.pres
+        @settings.posts = arg.settings.posts.concat @settings.posts
+
+        @_nodes.push {name: path, nodes: arg._nodes}
+
+        for name of arg._methods
+          _path = []
+          _path.push path if path
+          _path.push name if name
+          @_update _path.join('/')
 
       else if arg instanceof Function
 
         if arg.length is 5 # (err, req, res, next, socket) ->
           @settings.posts.push arg
-          @_updateAll()
+          @_update()
 
         else
-          @settings.methodHash[path] ?= []
-          @settings.methodHash[path].push arg
+          @_nodes.push {name: path, method: arg}
+
           @_update(path)
 
       else if typeof(arg) is 'string' or arg instanceof String
@@ -209,43 +196,68 @@ class StackServer extends TrackServer
 
     return @
 
-  _updateAll: ->
-    {methodHash} = @settings
-
-    for path of methodHash
-
-      @_update(path)
-
   _update: (path) ->
 
-    paths = path.split @path_delimiter
+    paths = if path then [path] else Object.keys(@_methods)
 
-    {pres, methodHash, posts} = @settings
+    paths.forEach (path) =>
 
-    _methods = pres.concat(methodHash?[''] or [])
+      _methods = @_traverse '/'+path, @_nodes
 
-    for len in [0...paths.length]
-      _path = paths[0..len].join(@path_delimiter)
-      _methods = _methods.concat(methodHash?[_path] or [])
+      {pres, posts} = @settings
+      methods = pres.concat(_methods).concat(posts)
 
-    _methods = _methods.concat posts or []
+      @set path, (req, res, cb, socket) ->
 
-    @set path, (req, res, cb, socket) ->
+        async.eachSeries methods, (method, cb) ->
 
-      async.eachSeries _methods, (method, cb) ->
+          res._cb = cb
 
-        res._cb = cb
+          method(req, res, cb, socket)
 
-        method(req, res, cb, socket)
+        , cb
 
-      , cb
+  # nodes = [
+  #   {name: '', method: ->}
+  #   {name: '', nodes: [
+  #     {name: 'module', nodes: [
+  #       {name: 'method', method: ->}
+  #     ]}
+  #   ]}
+  #   {name: 'module', nodes: [
+  #     {name: '', method: ->}
+  #   ]}
+  #   {name: 'methodA', nodes: [
+  #     {name: '', method: ->}
+  #     {name: '', method: ->}
+  #   ]}
+  #   {name: '', method: ->}
+  # ]
+  _traverse: (path, nodes, basePath='') ->
+    methods = []
+
+    for node in nodes
+
+      currentPath = basePath
+      currentPath += @path_delimiter + node.name if node.name
+
+      continue if path isnt currentPath and not path.startsWith(currentPath+'/')
+
+      if 'nodes' of node
+        _methods =  @_traverse path, node.nodes, currentPath
+        methods = methods.concat _methods
+
+      else if 'method' of node
+        methods.push node.method
+
+    return methods
 
   # obsolete
   pre: (args...) ->
 
     @settings.pres.push method for method in args
 
-    @_updateAll()
+    @_update()
 
     return @
 
