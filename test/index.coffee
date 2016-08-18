@@ -356,6 +356,10 @@ describe 'advanced', ->
         @_order 'method', req.body
         res.json({success: true, data: req.data})
 
+      defaultMethod = (req, res, next) =>
+        @_order 'default', req.body
+        next new Error 'method not found'
+
       subserver = new Server()
       subserver.pre pre
       subserver.use middleware2
@@ -369,6 +373,8 @@ describe 'advanced', ->
 
       # extend
       server.use rootserver
+
+      server.use defaultMethod
 
       done()
 
@@ -400,6 +406,14 @@ describe 'advanced', ->
 
       client.send 'submodule/method', {}, (err, val) =>
         assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'middleware3', 'method']
+        done()
+
+    it '"submodule" is callable, run middlewares and default method', (done) ->
+
+      client.send 'submodule', {}, (err, val) =>
+        assert err
+        console.log @_order.returnValues, err
+        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'default']
         done()
 
 
