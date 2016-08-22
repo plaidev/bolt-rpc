@@ -17,7 +17,7 @@
       this.server = server;
       this.options = options;
       this._cb = _cb;
-      this._tracked = this.options.disable_track === true;
+      this._tracked = this.options.auto_track === true;
     }
 
     Response.prototype.send = function(val) {
@@ -109,7 +109,7 @@
         req.path = path;
         req.options = options != null ? options : {};
         responseOptions = {
-          disable_track: options != null ? options.auto_tracked_request : void 0
+          auto_track: options != null ? options.auto_track : void 0
         };
         res = new Response(self, responseOptions, null);
         cb = function(err, val) {
@@ -124,13 +124,16 @@
           if (err instanceof Error) {
             if (self._error) {
               self._error(err, req, res, function(err) {
+                if (err === FORCE_STOP) {
+                  err = null;
+                }
                 if (err instanceof Error) {
                   err = {
                     message: err.message
                   };
                 }
                 return next(err, res.val);
-              });
+              }, socket);
               return;
             }
             err = {
@@ -148,7 +151,9 @@
     };
 
     TrackServer.prototype.error = function(_error) {
-      this._error = _error;
+      if (_error != null) {
+        this._error = _error;
+      }
       return this._error;
     };
 
@@ -169,10 +174,21 @@
       this.path_delimiter = path_delimiter || '/';
       this._nodes = [];
       this.settings = {
-        pres: [],
-        posts: []
+        pres: []
       };
+      this._errorHandlers = [];
       StackServer.__super__.constructor.call(this, this.io, options);
+      this.error((function(_this) {
+        return function(err, req, res, cb, socket) {
+          if (_this._errorHandlers.length === 0) {
+            return cb(err);
+          }
+          return async.eachSeries(_this._errorHandlers, function(method, next) {
+            res._cb = next;
+            return method(err, req, res, next, socket);
+          }, cb);
+        };
+      })(this));
     }
 
     StackServer.prototype.init = function(io, options) {
@@ -191,7 +207,7 @@
         arg = args[_i];
         if (arg instanceof StackServer) {
           this.settings.pres = this.settings.pres.concat(arg.settings.pres);
-          this.settings.posts = arg.settings.posts.concat(this.settings.posts);
+          this._errorHandlers = this._errorHandlers.concat(arg._errorHandlers);
           this._nodes.push({
             name: path,
             nodes: arg._nodes
@@ -208,7 +224,7 @@
           }
         } else if (arg instanceof Function) {
           if (arg.length === 5) {
-            this.settings.posts.push(arg);
+            this._errorHandlers.push(arg);
             this._update();
           } else {
             this._nodes.push({
@@ -231,14 +247,14 @@
       paths = path ? [path] : Object.keys(this._methods);
       return paths.forEach((function(_this) {
         return function(path) {
-          var methods, posts, pres, _methods, _ref;
+          var methods, pres, _methods;
           _methods = _this._traverse('/' + path, _this._nodes);
-          _ref = _this.settings, pres = _ref.pres, posts = _ref.posts;
-          methods = pres.concat(_methods).concat(posts);
+          pres = _this.settings.pres;
+          methods = pres.concat(_methods);
           return _this.set(path, function(req, res, cb, socket) {
-            return async.eachSeries(methods, function(method, cb) {
-              res._cb = cb;
-              return method(req, res, cb, socket);
+            return async.eachSeries(methods, function(method, next) {
+              res._cb = next;
+              return method(req, res, next, socket);
             }, cb);
           });
         };

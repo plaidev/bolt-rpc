@@ -40,7 +40,7 @@
       this.val = null;
       this.err = null;
       this.calling = false;
-      this.updateRequest = null;
+      this.context = null;
       this._pres = [];
       this._mdls = [];
       this._posts = [];
@@ -77,14 +77,14 @@
       if (this.data === void 0) {
         return this;
       }
+      if (context === null) {
+        return this;
+      }
       if (this.calling) {
-        if ((this.updateRequest == null) && ((context != null ? context.auto_track : void 0) != null)) {
-          this.updateRequest = {
-            auto_track: context != null ? context.auto_track : void 0
-          };
-        } else {
-          this.updateRequest = {};
+        if (context.auto_track && (this.context != null) && !this.context.auto_track) {
+          return this;
         }
+        this.context = context;
         return this;
       }
       this.calling = true;
@@ -98,13 +98,14 @@
           } else {
             _this.emit('end', val);
           }
-          if (_this.updateRequest) {
-            context = _this.updateRequest;
-            _this.updateRequest = null;
-            return setTimeout(function() {
-              return _this.update(void 0, context);
-            }, 0);
+          if (_this.context == null) {
+            return;
           }
+          context = _this.context;
+          _this.context = null;
+          return setTimeout(function() {
+            return _this.update(void 0, context);
+          }, 0);
         };
       })(this));
       return this;
@@ -140,8 +141,10 @@
             v = _ref[k];
             options[k] = v;
           }
-          if (context != null ? context.auto_track : void 0) {
-            options.auto_tracked_request = true;
+          if (context.auto_track) {
+            if (options.auto_track == null) {
+              options.auto_track = true;
+            }
           }
           return _this.client.send(_this.method, data, options, function(err, val) {
             var e, mdl, _i, _len, _ref1;
@@ -200,6 +203,10 @@
       }
       this._posts.push(func);
       return this;
+    };
+
+    Cursor.prototype.isUpdateRequested = function() {
+      return this.context != null;
     };
 
     return Cursor;
