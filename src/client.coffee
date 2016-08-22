@@ -21,7 +21,8 @@ class Cursor extends Emitter
     @val = null
     @err = null
     @calling = false
-    @updateRequest = null
+
+    @context = null
 
     # @pres -> <client.send> -> @mdls -> @posts
     @_pres = []  # (data, context, next) -> next(null, data, context)
@@ -52,14 +53,17 @@ class Cursor extends Emitter
     # not update if @data is undefined.
     return @ if @data is undefined
 
+    return @ if context is null
+
     # reject if now calling, but keep request, data and context.
     if @calling
 
+      # auto_track is week request, don't update non auto_track context.
+      if context.auto_track and @context? and not @context.auto_track
+        return @
+
       # keep auto track context
-      if not @updateRequest? and context?.auto_track?
-        @updateRequest = {auto_track: context?.auto_track}
-      else
-        @updateRequest = {}
+      @context = context
 
       return @
 
@@ -79,12 +83,14 @@ class Cursor extends Emitter
         @emit 'end', val
 
       # update more once if requested
-      if @updateRequest
-        context = @updateRequest
-        @updateRequest = null
-        setTimeout =>
-          @update undefined, context
-        , 0
+      return if not @context?
+
+      context = @context
+      @context = null
+
+      setTimeout =>
+        @update undefined, context
+      , 0
 
     return @
 
@@ -105,7 +111,7 @@ class Cursor extends Emitter
 
       options = {}
       options[k] = v for own k, v of @options
-      options.auto_tracked_request = true if context?.auto_track
+      options.auto_track ?= true if context.auto_track
 
       @client.send @method, data, options, (err, val) =>
         return cb err if err
@@ -133,6 +139,9 @@ class Cursor extends Emitter
   post: (func=(val, next) -> next(null, val)) ->
     @_posts.push func
     return @
+
+  isUpdateRequested: ->
+    return @context?
 
 
 # cursor with track filters
