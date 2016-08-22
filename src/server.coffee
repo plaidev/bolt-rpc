@@ -9,7 +9,8 @@ FORCE_STOP = "FORCE_STOP"
 # mock response object like express
 class Response
   constructor: (@server, @options, @_cb) ->
-    @_tracked = @options.disable_track is true
+    # already tracked, if requested by auto track.
+    @_tracked = @options.auto_track is true
 
   send: (val) ->
     @val = val
@@ -83,7 +84,7 @@ class TrackServer
       req.options = options ? {}
 
       responseOptions =
-        disable_track: options?.auto_tracked_request
+        auto_track: options?.auto_track
 
       # response: create
       res = new Response(self, responseOptions, null)
@@ -252,7 +253,7 @@ class StackServer extends TrackServer
 
     return methods
 
-  # obsolete
+  # deprecated
   pre: (args...) ->
 
     @settings.pres.push method for method in args
