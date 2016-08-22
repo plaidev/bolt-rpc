@@ -100,11 +100,14 @@ class TrackServer
         # custom error handling
         if err instanceof Error
 
-          # obsolute
           if self._error
+
             self._error err, req, res, (err) ->
+              err = null if err is FORCE_STOP
               err = {message: err.message} if err instanceof Error
               next err, res.val
+            , socket
+
             return
 
           err = {message: err.message}
@@ -118,9 +121,9 @@ class TrackServer
 
     @server.set path, _m if @server?
 
-  # obsolute
-  # replace `app.use (err, req, res, next, socket) ->`
-  error: (@_error) ->
+  # deprecated, use `app.use (err, req, res, next, socket) ->`
+  error: (_error) ->
+    @_error = _error if _error?
 
     return @_error
 
@@ -135,12 +138,26 @@ class StackServer extends TrackServer
 
     @_nodes = []
 
+    # deprecated
     @settings = {
-      pres: [] # obsolete
-      posts: []
+      pres: []
     }
 
+    @_errorHandlers = []
+
     super @io, options
+
+    @error (err, req, res, cb, socket) =>
+
+      return cb err if @_errorHandlers.length is 0
+
+      async.eachSeries @_errorHandlers, (method, next) ->
+
+        res._cb = next
+
+        method(err, req, res, next, socket)
+
+      , cb
 
   init: (io, options={}) ->
 
@@ -167,8 +184,10 @@ class StackServer extends TrackServer
     for arg in args
 
       if arg instanceof StackServer
+        # deprecated
         @settings.pres = @settings.pres.concat arg.settings.pres
-        @settings.posts = arg.settings.posts.concat @settings.posts
+
+        @_errorHandlers = @_errorHandlers.concat arg._errorHandlers
 
         @_nodes.push {name: path, nodes: arg._nodes}
 
@@ -181,7 +200,7 @@ class StackServer extends TrackServer
       else if arg instanceof Function
 
         if arg.length is 5 # (err, req, res, next, socket) ->
-          @settings.posts.push arg
+          @_errorHandlers.push arg
           @_update()
 
         else
@@ -205,16 +224,16 @@ class StackServer extends TrackServer
 
       _methods = @_traverse '/'+path, @_nodes
 
-      {pres, posts} = @settings
-      methods = pres.concat(_methods).concat(posts)
+      {pres} = @settings
+      methods = pres.concat(_methods)
 
       @set path, (req, res, cb, socket) ->
 
-        async.eachSeries methods, (method, cb) ->
+        async.eachSeries methods, (method, next) ->
 
-          res._cb = cb
+          res._cb = next
 
-          method(req, res, cb, socket)
+          method(req, res, next, socket)
 
         , cb
 
