@@ -17,10 +17,10 @@
   __swap_options_and_handler = function(_arg) {
     var handler, options;
     options = _arg.options, handler = _arg.handler;
-    if ('function' === typeof options) {
+    if (typeof options === 'function' || options instanceof Function) {
       return {
         handler: options,
-        options: {}
+        options: handler != null ? handler : {}
       };
     }
     return {
@@ -32,18 +32,26 @@
   Cursor = (function(_super) {
     __extends(Cursor, _super);
 
-    function Cursor(client, method, data, options) {
+    function Cursor(client, method, data, options, handler) {
       this.client = client;
       this.method = method;
       this.data = data;
-      this.options = options != null ? options : {};
+      this.options = options;
       this.val = null;
       this.err = null;
       this.calling = false;
-      this.updateRequest = false;
-      this._mdls = [];
+      this.context = null;
       this._pres = [];
+      this._mdls = [];
       this._posts = [];
+      if (handler) {
+        this.on('error', function(err) {
+          return handler(err);
+        });
+        this.on('end', function(val) {
+          return handler(null, val);
+        });
+      }
     }
 
     Cursor.prototype.error = function(cb) {
@@ -57,20 +65,26 @@
     };
 
     Cursor.prototype.update = function(data, context) {
-      var _base;
+      if (data == null) {
+        data = void 0;
+      }
+      if (context == null) {
+        context = {};
+      }
       if (data !== void 0) {
         this.data = data;
       }
       if (this.data === void 0) {
-        return;
+        return this;
+      }
+      if (context === null) {
+        return this;
       }
       if (this.calling) {
-        this.updateRequest = {};
-        if (context != null ? context.auto_track : void 0) {
-          if ((_base = this.updateRequest).auto_track == null) {
-            _base.auto_track = context.auto_track;
-          }
+        if (context.auto_track && (this.context != null) && !this.context.auto_track) {
+          return this;
         }
+        this.context = context;
         return this;
       }
       this.calling = true;
@@ -84,13 +98,14 @@
           } else {
             _this.emit('end', val);
           }
-          if (_this.updateRequest) {
-            context = _this.updateRequest;
-            _this.updateRequest = false;
-            return setTimeout(function() {
-              return _this.update(void 0, context);
-            }, 0);
+          if (_this.context == null) {
+            return;
           }
+          context = _this.context;
+          _this.context = null;
+          return setTimeout(function() {
+            return _this.update(void 0, context);
+          }, 0);
         };
       })(this));
       return this;
@@ -126,8 +141,10 @@
             v = _ref[k];
             options[k] = v;
           }
-          if (context != null ? context.auto_track : void 0) {
-            options.auto_tracked_request = true;
+          if (context.auto_track) {
+            if (options.auto_track == null) {
+              options.auto_track = true;
+            }
           }
           return _this.client.send(_this.method, data, options, function(err, val) {
             var e, mdl, _i, _len, _ref1;
@@ -151,10 +168,20 @@
     };
 
     Cursor.prototype.map = function(mdl) {
+      if (mdl == null) {
+        mdl = function(val) {
+          return val;
+        };
+      }
       return this._mdls.push(mdl);
     };
 
     Cursor.prototype.pre = function(func) {
+      if (func == null) {
+        func = function(data, context, next) {
+          return next();
+        };
+      }
       this._pres.push(function(data, context, cb) {
         return func(data, context, function() {
           var args, err;
@@ -169,8 +196,17 @@
     };
 
     Cursor.prototype.post = function(func) {
+      if (func == null) {
+        func = function(val, next) {
+          return next(null, val);
+        };
+      }
       this._posts.push(func);
       return this;
+    };
+
+    Cursor.prototype.isUpdateRequested = function() {
+      return this.context != null;
     };
 
     return Cursor;
@@ -180,34 +216,14 @@
   TrackCursor = (function(_super) {
     __extends(TrackCursor, _super);
 
-    function TrackCursor(client, method, data, options, handler) {
-      var track_path, _ref;
-      _ref = __swap_options_and_handler({
-        options: options,
-        handler: handler
-      }), options = _ref.options, handler = _ref.handler;
+    function TrackCursor(client, method, data, options, handler, track_path) {
+      TrackCursor.__super__.constructor.call(this, client, method, data, options, handler);
       this.tracking = false;
-      TrackCursor.__super__.constructor.call(this, client, method, data, options);
-      if (handler) {
-        this.on('error', function(err) {
-          return handler(err);
-        });
-        this.on('end', function(val) {
-          return handler(null, val);
-        });
-      }
-      track_path = this.options.track_path;
-      if (track_path == null) {
-        track_path = method;
-      }
-      if (!(track_path instanceof Array)) {
-        track_path = typeof track_path.split === "function" ? track_path.split('.') : void 0;
-      }
-      if (!track_path || track_path.length === 0) {
+      if (!track_path) {
         return;
       }
-      this.client.join(track_path[0]);
-      this.client._socket.on(track_path.join('.') + '_track', (function(_this) {
+      this.client.join(track_path);
+      this.client._socket.on(track_path + '_track', (function(_this) {
         return function(trackContext) {
           if (!_this.tracking) {
             return;
@@ -235,26 +251,18 @@
     __extends(TrackClient, _super);
 
     function TrackClient(io_or_socket, options) {
-      var track_path;
       if (options == null) {
         options = {};
       }
-      track_path = options.track_path;
-      if (track_path != null) {
-        this.default_track_path = track_path;
-      }
+      this.track_path = options.track_path;
       TrackClient.__super__.constructor.call(this, io_or_socket, options);
-      if (!(track_path instanceof Array)) {
-        track_path = track_path != null ? typeof track_path.split === "function" ? track_path.split('.') : void 0 : void 0;
-      }
-      if (!track_path || track_path.length === 0) {
-        return;
-      }
-      this.join(track_path[0]);
     }
 
     TrackClient.prototype.track = function(method, data, options, handler) {
-      var cursor, _ref;
+      var cursor, track_path, _ref;
+      if (data == null) {
+        data = void 0;
+      }
       if (options == null) {
         options = {};
       }
@@ -264,13 +272,9 @@
       _ref = __swap_options_and_handler({
         options: options,
         handler: handler
-      }), options = _ref.options, handler = _ref.handler;
-      if (this.default_track_path != null) {
-        if (options.track_path == null) {
-          options.track_path = this.default_track_path;
-        }
-      }
-      cursor = new TrackCursor(this, method, data, options, handler);
+      }), handler = _ref.handler, options = _ref.options;
+      track_path = options.track_path || this.track_path || method;
+      cursor = new TrackCursor(this, method, data, options, handler, track_path);
       return cursor;
     };
 

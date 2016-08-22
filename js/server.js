@@ -1,8 +1,8 @@
 (function() {
   var FORCE_STOP, Response, Server, StackServer, TrackServer, async, copy,
-    __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
 
   async = require('async');
 
@@ -17,7 +17,7 @@
       this.server = server;
       this.options = options;
       this._cb = _cb;
-      this._tracked = this.options.disable_track ? true : false;
+      this._tracked = this.options.auto_track === true;
     }
 
     Response.prototype.send = function(val) {
@@ -30,23 +30,20 @@
       return this._cb(FORCE_STOP, val);
     };
 
-    Response.prototype.track = function() {
-      var context, track_path, _i, _ref;
-      track_path = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), context = arguments[_i++];
+    Response.prototype.track = function(track_path, context) {
+      if (context == null) {
+        context = {};
+      }
       if (this._tracked) {
         return;
       }
-      if ((typeof context === 'string') || (context instanceof String)) {
-        track_path.push(context);
-        context = {};
-      }
-      if (track_path.length === 0) {
+      if (!track_path) {
         return;
       }
       if (context.auto_track == null) {
         context.auto_track = true;
       }
-      (_ref = this.server).track.apply(_ref, __slice.call(track_path).concat([context]));
+      this.server.track(track_path, context);
       return this._tracked = true;
     };
 
@@ -56,10 +53,7 @@
 
   TrackServer = (function() {
     function TrackServer(io, options) {
-      var path_delimiter;
       this.io = io;
-      path_delimiter = options.path_delimiter;
-      this.path_delimiter = path_delimiter || '.';
       this._methods = {};
       if (this.io != null) {
         this.init(this.io, options);
@@ -84,18 +78,14 @@
       return _results;
     };
 
-    TrackServer.prototype.track = function() {
-      var context, track_path, _i;
-      track_path = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), context = arguments[_i++];
-      if (track_path.length === 0) {
+    TrackServer.prototype.track = function(track_path, context) {
+      if (context == null) {
+        context = {};
+      }
+      if (!track_path) {
         return;
       }
-      this.server.channel.to(track_path[0]).emit(track_path.join(this.path_delimiter) + '_track', context);
-    };
-
-    TrackServer.prototype.error = function(_error) {
-      this._error = _error;
-      return this._error;
+      this.server.channel.to(track_path).emit(track_path + '_track', context);
     };
 
     TrackServer.prototype.set = function(path, method) {
@@ -119,7 +109,7 @@
         req.path = path;
         req.options = options != null ? options : {};
         responseOptions = {
-          disable_track: options.auto_tracked_request ? true : false
+          auto_track: options != null ? options.auto_track : void 0
         };
         res = new Response(self, responseOptions, null);
         cb = function(err, val) {
@@ -134,13 +124,16 @@
           if (err instanceof Error) {
             if (self._error) {
               self._error(err, req, res, function(err) {
+                if (err === FORCE_STOP) {
+                  err = null;
+                }
                 if (err instanceof Error) {
                   err = {
                     message: err.message
                   };
                 }
                 return next(err, res.val);
-              });
+              }, socket);
               return;
             }
             err = {
@@ -157,6 +150,13 @@
       }
     };
 
+    TrackServer.prototype.error = function(_error) {
+      if (_error != null) {
+        this._error = _error;
+      }
+      return this._error;
+    };
+
     return TrackServer;
 
   })();
@@ -165,105 +165,74 @@
     __extends(StackServer, _super);
 
     function StackServer(io, options) {
+      var path_delimiter;
       this.io = io != null ? io : void 0;
       if (options == null) {
         options = {};
       }
+      path_delimiter = options.path_delimiter;
+      this.path_delimiter = path_delimiter || '/';
+      this._nodes = [];
       this.settings = {
-        pres: [],
-        methodHash: {},
-        posts: []
+        pres: []
       };
+      this._errorHandlers = [];
       StackServer.__super__.constructor.call(this, this.io, options);
+      this.error((function(_this) {
+        return function(err, req, res, cb, socket) {
+          if (_this._errorHandlers.length === 0) {
+            return cb(err);
+          }
+          return async.eachSeries(_this._errorHandlers, function(method, next) {
+            res._cb = next;
+            return method(err, req, res, next, socket);
+          }, cb);
+        };
+      })(this));
     }
 
     StackServer.prototype.init = function(io, options) {
-      var methodHash, path, _results;
       if (options == null) {
         options = {};
       }
       TrackServer.prototype.init.call(this, io, options);
-      methodHash = this.settings.methodHash;
-      _results = [];
-      for (path in methodHash) {
-        _results.push(this._update(path));
-      }
-      return _results;
-    };
-
-    StackServer.prototype.extend = function(baseServer, prefix) {
-      var methodHash, path, _assign;
-      if (prefix == null) {
-        prefix = null;
-      }
-      if (baseServer == null) {
-        return this;
-      }
-      _assign = (function(_this) {
-        return function(self, base) {
-          var methods, path, paths, _base, _ref, _results;
-          self.pres = self.pres.concat(base.pres);
-          _ref = base.methodHash;
-          _results = [];
-          for (path in _ref) {
-            methods = _ref[path];
-            paths = [];
-            if (prefix) {
-              paths.push(prefix);
-            }
-            if (path) {
-              paths.push(path);
-            }
-            path = paths.join(_this.path_delimiter);
-            if ((_base = self.methodHash)[path] == null) {
-              _base[path] = [];
-            }
-            _results.push(self.methodHash[path] = self.methodHash[path].concat(methods));
-          }
-          return _results;
-        };
-      })(this);
-      _assign(this.settings, baseServer.settings);
-      methodHash = this.settings.methodHash;
-      for (path in methodHash) {
-        this._update(path);
-      }
-      return this;
-    };
-
-    StackServer.prototype.pre = function() {
-      var args, method, path, _i, _j, _len, _len1, _ref;
-      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      for (_i = 0, _len = args.length; _i < _len; _i++) {
-        method = args[_i];
-        this.settings.pres.push(method);
-      }
-      _ref = this.settings.methodHash;
-      for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-        path = _ref[_j];
-        this._update(path);
-      }
-      return this;
+      return this._update();
     };
 
     StackServer.prototype.use = function() {
-      var arg, args, path, _base, _i, _len;
+      var arg, args, name, path, _i, _len, _path;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       path = '';
       for (_i = 0, _len = args.length; _i < _len; _i++) {
         arg = args[_i];
         if (arg instanceof StackServer) {
-          this.extend(arg, path);
+          this.settings.pres = this.settings.pres.concat(arg.settings.pres);
+          this._errorHandlers = this._errorHandlers.concat(arg._errorHandlers);
+          this._nodes.push({
+            name: path,
+            nodes: arg._nodes
+          });
+          for (name in arg._methods) {
+            _path = [];
+            if (path) {
+              _path.push(path);
+            }
+            if (name) {
+              _path.push(name);
+            }
+            this._update(_path.join('/'));
+          }
         } else if (arg instanceof Function) {
           if (arg.length === 5) {
-            this.settings.posts.push(arg);
+            this._errorHandlers.push(arg);
+            this._update();
           } else {
-            if ((_base = this.settings.methodHash)[path] == null) {
-              _base[path] = [];
-            }
-            this.settings.methodHash[path].push(arg);
+            this._nodes.push({
+              name: path,
+              method: arg
+            });
+            this._update(path);
           }
-          this._update(path);
         } else if (typeof arg === 'string' || arg instanceof String) {
           path = arg;
         } else {
@@ -274,24 +243,58 @@
     };
 
     StackServer.prototype._update = function(path) {
-      var len, methodHash, paths, posts, pres, _i, _methods, _path, _ref, _ref1;
-      paths = path.split(this.path_delimiter);
-      _ref = this.settings || {}, pres = _ref.pres, methodHash = _ref.methodHash, posts = _ref.posts;
-      if (pres == null) {
-        pres = [];
+      var paths;
+      paths = path ? [path] : Object.keys(this._methods);
+      return paths.forEach((function(_this) {
+        return function(path) {
+          var methods, pres, _methods;
+          _methods = _this._traverse('/' + path, _this._nodes);
+          pres = _this.settings.pres;
+          methods = pres.concat(_methods);
+          return _this.set(path, function(req, res, cb, socket) {
+            return async.eachSeries(methods, function(method, next) {
+              res._cb = next;
+              return method(req, res, next, socket);
+            }, cb);
+          });
+        };
+      })(this));
+    };
+
+    StackServer.prototype._traverse = function(path, nodes, basePath) {
+      var currentPath, methods, node, _i, _len, _methods;
+      if (basePath == null) {
+        basePath = '';
       }
-      _methods = pres.concat((methodHash != null ? methodHash[''] : void 0) || []);
-      for (len = _i = 0, _ref1 = paths.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; len = 0 <= _ref1 ? ++_i : --_i) {
-        _path = paths.slice(0, +len + 1 || 9e9).join(this.path_delimiter);
-        _methods = _methods.concat((methodHash != null ? methodHash[_path] : void 0) || []);
+      methods = [];
+      for (_i = 0, _len = nodes.length; _i < _len; _i++) {
+        node = nodes[_i];
+        currentPath = basePath;
+        if (node.name) {
+          currentPath += this.path_delimiter + node.name;
+        }
+        if (path !== currentPath && !path.startsWith(currentPath + '/')) {
+          continue;
+        }
+        if ('nodes' in node) {
+          _methods = this._traverse(path, node.nodes, currentPath);
+          methods = methods.concat(_methods);
+        } else if ('method' in node) {
+          methods.push(node.method);
+        }
       }
-      _methods = _methods.concat(posts || []);
-      return this.set(path, function(req, res, cb, socket) {
-        return async.eachSeries(_methods, function(method, cb) {
-          res._cb = cb;
-          return method(req, res, cb, socket);
-        }, cb);
-      });
+      return methods;
+    };
+
+    StackServer.prototype.pre = function() {
+      var args, method, _i, _len;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      for (_i = 0, _len = args.length; _i < _len; _i++) {
+        method = args[_i];
+        this.settings.pres.push(method);
+      }
+      this._update();
+      return this;
     };
 
     return StackServer;
