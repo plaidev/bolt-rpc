@@ -140,7 +140,7 @@ class Cursor extends Emitter
     @_posts.push func
     return @
 
-  isUpdateRequested: ->
+  isUpdateScheduled: ->
     return @context?
 
 

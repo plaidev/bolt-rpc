@@ -205,7 +205,7 @@
       return this;
     };
 
-    Cursor.prototype.isUpdateRequested = function() {
+    Cursor.prototype.isUpdateScheduled = function() {
       return this.context != null;
     };
 
