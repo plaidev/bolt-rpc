@@ -8,96 +8,61 @@ FORCE_STOP = "FORCE_STOP"
 
 # mock response object like express
 class Response
-  constructor: (@_cb) ->
+  constructor: (@server, @options, @_cb) ->
+    # already tracked, if requested by auto track.
+    @_tracked = @options.auto_track is true
+
   send: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
+
   json: (val) ->
     @val = val
     @_cb(FORCE_STOP, val)
 
-# server which can handle middlewares like express
-class StackServer
+  track: (track_path, context={}) ->
+    return if @_tracked
 
-  constructor: (@io=undefined, options={}) ->
+    return if not track_path
 
-    @server = new Server(@io, {}, options) if @io?
+    context.auto_track ?= true
 
-    @pres = []
+    @server.track track_path, context
 
-    @methods = {}
+    @_tracked = true
 
-  extend: (baseServer) ->
 
-    return @ if not baseServer?
+class TrackServer
 
-    @pres = baseServer.pres.concat @pres
+  constructor: (@io, options) ->
 
-    methods = {}
+    @_methods = {}
 
-    methods[name] = method for name, method of baseServer.methods
+    @init(@io, options) if @io?
 
-    methods[name] = method for name, method of @methods
+  init: (io, options={}) ->
 
-    @methods = methods
-
-    @_error = null
-
-  setupServer: (@io, options={}) ->
+    @io ?= io
 
     @server = new Server(@io, {}, options)
 
-    for path, methods of @methods
+    for path, method of @_methods
 
-      @_update(path)
+      @server.set path, method
 
-  pre: () ->
+  track: (track_path, context={}) ->
 
-    methods = [].slice.call(arguments, 0)
+    return if not track_path
 
-    options = {}
+    # TODO: support 'room != track_path' case?
+    @server.channel.to(track_path).emit track_path + '_track', context
 
-    @pres.push {method, options} for method in methods
+    return
 
-  get_namespace: (path, req) ->
-    return '_'
-
-  track: (ns, data) ->
-
-    @server.channel.emit ns + '_track', data
-
-  error: (@_error) ->
-
-  use: ->
-
-    args = [].slice.call(arguments)
-
-    if typeof(args[0]) is 'string' or args[0] instanceof String
-      path = args[0]
-      @methods[path] ?= []
-      methods = @methods[path]
-      args = args[1..]
-    else
-      path = null
-      methods = []
-
-    if not (args[0] instanceof Function)
-      options = args[0]
-      args = args[1..]
-    else
-      options = {}
-
-    methods.push {method, options} for method in args
-
-    @_update(path) if path?
-
-  _update: (path) ->
-
-    return if not @server?
+  # method = (req, res, cb, socket) ->
+  set: (path, method) ->
 
     self = @
-
-    _methods = @pres.concat(@methods[path])
 
     _m = (data, options, next, socket) ->
 
@@ -107,6 +72,7 @@ class StackServer
         next = options
         options = {}
 
+      # request: clone and setup
       req = copy(socket.request)
 
       req.end = (cb) ->
@@ -117,23 +83,14 @@ class StackServer
       req.path = path
       req.options = options ? {}
 
-      res = new Response()
+      responseOptions =
+        auto_track: options?.auto_track
 
-      series = []
+      # response: create
+      res = new Response(self, responseOptions, null)
 
-      track = false
-
-      async.eachSeries _methods, ({method, options}, cb) ->
-
-        res._cb = cb
-        track = true if options.track
-        method(req, res, cb, socket)
-
-      , (err, val) ->
-
-        if track
-          ns = self.get_namespace(path, req)
-          self.track.call(self, ns, res.val)
+      # build callback: error handling, force_stop
+      cb = (err, val) ->
 
         if req.__ends__
           req.__ends__.map (end) -> end()
@@ -142,17 +99,187 @@ class StackServer
 
         # custom error handling
         if err instanceof Error
+
           if self._error
+
             self._error err, req, res, (err) ->
+              err = null if err is FORCE_STOP
               err = {message: err.message} if err instanceof Error
               next err, res.val
+            , socket
+
             return
 
           err = {message: err.message}
 
         next err, res.val
 
-    @server.set path, _m
+      # method apply
+      method req, res, cb, socket
+
+    @_methods[path] = _m
+
+    @server.set path, _m if @server?
+
+  # deprecated, use `app.use (err, req, res, next, socket) ->`
+  error: (_error) ->
+    @_error = _error if _error?
+
+    return @_error
+
+
+# server which can handle middlewares like express
+class StackServer extends TrackServer
+
+  constructor: (@io=undefined, options={}) ->
+
+    {path_delimiter} = options
+    @path_delimiter = path_delimiter or '/'
+
+    @_nodes = []
+
+    # deprecated
+    @settings = {
+      pres: []
+    }
+
+    @_errorHandlers = []
+
+    super @io, options
+
+    @error (err, req, res, cb, socket) =>
+
+      return cb err if @_errorHandlers.length is 0
+
+      async.eachSeries @_errorHandlers, (method, next) ->
+
+        res._cb = next
+
+        method(err, req, res, next, socket)
+
+      , cb
+
+  init: (io, options={}) ->
+
+    TrackServer.prototype.init.call @, io, options
+
+    @_update()
+
+  # add default middleware ... `(req, res, next, socket) ->`
+  # > app.use method
+  # add method ... `(req, res, next, socket) ->`
+  # > app.use 'method', method
+  # add named middleware and method
+  # > app.use 'method', middleware, method
+  # extend app.
+  # > app.use subApp
+  # add subApp with prefix
+  # > app.use 'submodule', subApp
+  # add error handler ... `(err, req, res, next, socket) ->`
+  # > app.use handler
+  # ... see unit test cases.
+  use: (args...) ->
+    path = ''
+
+    for arg in args
+
+      if arg instanceof StackServer
+        # deprecated
+        @settings.pres = @settings.pres.concat arg.settings.pres
+
+        @_errorHandlers = @_errorHandlers.concat arg._errorHandlers
+
+        @_nodes.push {name: path, nodes: arg._nodes}
+
+        for name of arg._methods
+          _path = []
+          _path.push path if path
+          _path.push name if name
+          @_update _path.join('/')
+
+      else if arg instanceof Function
+
+        if arg.length is 5 # (err, req, res, next, socket) ->
+          @_errorHandlers.push arg
+          @_update()
+
+        else
+          @_nodes.push {name: path, method: arg}
+
+          @_update(path)
+
+      else if typeof(arg) is 'string' or arg instanceof String
+        path = arg
+
+      else
+        console.log 'warning, invalid argument:', arg
+
+    return @
+
+  _update: (path) ->
+
+    paths = if path then [path] else Object.keys(@_methods)
+
+    paths.forEach (path) =>
+
+      _methods = @_traverse '/'+path, @_nodes
+
+      {pres} = @settings
+      methods = pres.concat(_methods)
+
+      @set path, (req, res, cb, socket) ->
+
+        async.eachSeries methods, (method, next) ->
+
+          res._cb = next
+
+          method(req, res, next, socket)
+
+        , cb
+
+  # nodes = [
+  #   {name: '', method: ->}
+  #   {name: '', nodes: [
+  #     {name: 'module', nodes: [
+  #       {name: 'method', method: ->}
+  #     ]}
+  #   ]}
+  #   {name: 'module', nodes: [
+  #     {name: '', method: ->}
+  #   ]}
+  #   {name: 'methodA', nodes: [
+  #     {name: '', method: ->}
+  #     {name: '', method: ->}
+  #   ]}
+  #   {name: '', method: ->}
+  # ]
+  _traverse: (path, nodes, basePath='') ->
+    methods = []
+
+    for node in nodes
+
+      currentPath = basePath
+      currentPath += @path_delimiter + node.name if node.name
+
+      continue if path isnt currentPath and not path.startsWith(currentPath+'/')
+
+      if 'nodes' of node
+        _methods =  @_traverse path, node.nodes, currentPath
+        methods = methods.concat _methods
+
+      else if 'method' of node
+        methods.push node.method
+
+    return methods
+
+  # deprecated
+  pre: (args...) ->
+
+    @settings.pres.push method for method in args
+
+    @_update()
+
+    return @
 
 
 module.exports = StackServer
