@@ -63,7 +63,7 @@ describe "Basic RPC Function", ->
     server.use 'customerror', (req, res, next) ->
       next new Error 'custom error'
 
-    server.error (err, req, res, next) ->
+    server.use (err, req, res, next, socket) ->
       assert err.message is 'custom error'
       success_catch_error = true
       next err
@@ -71,8 +71,11 @@ describe "Basic RPC Function", ->
     client.send 'customerror', {}, (err, val) ->
       assert err.message is 'custom error'
       assert success_catch_error is true
+
       # delete error handler
-      server.error null
+      # umm.
+      server._errorHandlers = []
+
       done()
 
 describe 'Promise API', ->
@@ -346,6 +349,8 @@ describe 'advanced', ->
 
       middleware2 = (req, res, next) =>
         @_order 'middleware2', req.body
+        if req.body.throw_error
+          return next new Error 'error!'
         next()
 
       middleware3 = (req, res, next) =>
@@ -359,6 +364,14 @@ describe 'advanced', ->
       defaultMethod = (req, res, next) =>
         @_order 'default', req.body
         next new Error 'method not found'
+
+      errorHandler = (err, req, res, next, socket) =>
+        @_order 'error', req.body
+        if req.body.not_fatal_error
+          res.json {success: false}
+          return
+        assert err
+        next err
 
       subserver = new Server()
       subserver.pre pre
@@ -375,6 +388,8 @@ describe 'advanced', ->
       server.use rootserver
 
       server.use defaultMethod
+
+      server.use errorHandler
 
       done()
 
@@ -412,7 +427,22 @@ describe 'advanced', ->
 
       client.send 'submodule', {}, (err, val) =>
         assert err
-        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'default']
+        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'default', 'error']
+        done()
+
+    it 'can middlware throw error', (done) ->
+
+      client.send 'submodule/method', {throw_error: true}, (err, val) =>
+        assert err
+        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'error']
+        done()
+
+    it 'can middlware throw error, catch error handler', (done) ->
+
+      client.send 'submodule/method', {throw_error: true, not_fatal_error: true}, (err, val) =>
+        assert not err
+        assert val.success is false
+        assert _.isEqual @_order.returnValues, ['pre', 'middleware1', 'middleware2', 'error']
         done()
 
 
