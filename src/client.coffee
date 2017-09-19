@@ -176,10 +176,10 @@ class TrackCursor extends Cursor
 # TODO: not 'is a'
 class TrackClient extends Client
 
-  constructor: (io_or_socket, options={}) ->
+  constructor: (io_or_socket, options={}, cb=null) ->
     {@track_path} = options
 
-    super io_or_socket, options
+    super io_or_socket, options, cb
 
   # track api which return cursor.
   track: (method, data=undefined, options={}, handler=null) ->
