@@ -250,12 +250,15 @@
   TrackClient = (function(_super) {
     __extends(TrackClient, _super);
 
-    function TrackClient(io_or_socket, options) {
+    function TrackClient(io_or_socket, options, cb) {
       if (options == null) {
         options = {};
       }
+      if (cb == null) {
+        cb = null;
+      }
       this.track_path = options.track_path;
-      TrackClient.__super__.constructor.call(this, io_or_socket, options);
+      TrackClient.__super__.constructor.call(this, io_or_socket, options, cb);
     }
 
     TrackClient.prototype.track = function(method, data, options, handler) {
