@@ -186,7 +186,7 @@ class TrackClient extends Client
 
     {handler, options} = __swap_options_and_handler {options, handler}
 
-    track_path = options.track_path or @track_path or method
+    track_path = options.track_path ? @track_path ? method
 
     cursor = new TrackCursor(@, method, data, options, handler, track_path)
 
