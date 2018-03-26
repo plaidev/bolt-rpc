@@ -89,14 +89,21 @@
       }
       this.calling = true;
       this._query_with_middlewares(this.data, context, (function(_this) {
-        return function(err, val) {
-          _this.err = err || null;
-          _this.val = val || null;
+        return function(err, val, skip) {
+          if (skip == null) {
+            skip = false;
+          }
+          if (!skip) {
+            _this.err = err || null;
+            _this.val = val || null;
+          }
           _this.calling = false;
-          if (err) {
-            _this.emit('error', err);
-          } else {
-            _this.emit('end', val);
+          if (!skip) {
+            if (err) {
+              _this.emit('error', err);
+            } else {
+              _this.emit('end', val);
+            }
           }
           if (_this.context == null) {
             return;
@@ -129,10 +136,13 @@
 
     Cursor.prototype._query_with_middlewares = function(data, context, cb) {
       return this._pre_methods(data, context, (function(_this) {
-        return function(err, data) {
+        return function(err, data, context) {
           var k, options, v, _ref;
           if (err) {
             return cb(err);
+          }
+          if (context === null) {
+            return cb(null, null, true);
           }
           options = {};
           _ref = _this.options;
@@ -183,6 +193,10 @@
         };
       }
       this._pres.push(function(data, context, cb) {
+        if (context === null) {
+          cb(null, null, null);
+          return;
+        }
         return func(data, context, function() {
           var args, err;
           err = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -231,6 +245,19 @@
           return _this.update(void 0, trackContext);
         };
       })(this));
+      this.client._socket.on('reconnect', (function(_this) {
+        return function() {
+          if (!_this.tracking) {
+            return;
+          }
+          return setTimeout(function() {
+            return _this.update(void 0, {
+              auto_track: true,
+              reconnect: true
+            });
+          }, 0);
+        };
+      })(this));
     }
 
     TrackCursor.prototype.track = function(flag) {
@@ -262,7 +289,7 @@
     }
 
     TrackClient.prototype.track = function(method, data, options, handler) {
-      var cursor, track_path, _ref;
+      var cursor, track_path, _ref, _ref1, _ref2;
       if (data == null) {
         data = void 0;
       }
@@ -276,7 +303,7 @@
         options: options,
         handler: handler
       }), handler = _ref.handler, options = _ref.options;
-      track_path = options.track_path || this.track_path || method;
+      track_path = (_ref1 = (_ref2 = options.track_path) != null ? _ref2 : this.track_path) != null ? _ref1 : method;
       cursor = new TrackCursor(this, method, data, options, handler, track_path);
       return cursor;
     };
