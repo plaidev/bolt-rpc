@@ -142,7 +142,7 @@ class Cursor extends Emitter
       func data, context, (err, args...) ->
         if args.length is 0
           return cb err, data, context
-        cb err, data, context
+        cb err, args...
 
     return @
 
