@@ -8,7 +8,9 @@
     "server": "coffee example/stack/server.coffee",
     "client": "coffee example/stack/client.coffee",
     "vue-server": "nodemon -e coffee example/vue/server.coffee",
-    "make": "browserify -t coffeeify -r ./index:bolt-rpc --extension=\".coffee\" index.js > build/build.js"
+    "make": "browserify -t coffeeify -r ./index:bolt-rpc --extension=\".coffee\" index.js > build/build.js",
+    "build": "grunt && make build && make install && npm run make",
+    "prebuild": "make clean && make components"
   },
   "repository": {
     "type": "git",
