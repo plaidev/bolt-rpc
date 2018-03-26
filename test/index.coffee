@@ -551,3 +551,35 @@ describe 'track cursor', ->
     @clientModuleTrack.send 'test_with_auto_track', {}, (err, {success}) ->
       assert not err
       assert success
+
+  it 'can cancel call by pre method', (done) ->
+
+    cursor = @clientModuleTrack.track 'test', undefined, {
+      track_path: ACCEPT_ROOM
+    }
+
+    updateCount = 0
+    called = 0
+
+    cursor
+      .pre (data, context, next) ->
+        updateCount++
+        if updateCount is 2
+          next() # by default, next(null, data, context)
+        else
+          next null, data, null
+      .error (err) ->
+        console.log err
+        assert false
+      .end ({success, method}) ->
+        assert method is 'test'
+        assert success
+        called++
+        assert called is 1
+        if called >= 1
+          done()
+
+    cursor.update {}
+    cursor.update {}, null # context is null
+    cursor.update {}
+

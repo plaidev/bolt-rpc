@@ -69,18 +69,20 @@ class Cursor extends Emitter
 
     @calling = true
 
-    @_query_with_middlewares @data, context, (err, val) =>
+    @_query_with_middlewares @data, context, (err, val, skip=false) =>
 
       # update results
-      @err = err or null
-      @val = val or null
+      if not skip
+        @err = err or null
+        @val = val or null
 
       @calling = false
 
-      if err
-        @emit 'error', err
-      else
-        @emit 'end', val
+      if not skip
+        if err
+          @emit 'error', err
+        else
+          @emit 'end', val
 
       # update more once if requested
       return if not @context?
@@ -106,8 +108,9 @@ class Cursor extends Emitter
 
   _query_with_middlewares: (data, context, cb) ->
 
-    @_pre_methods data, context, (err, data) =>
+    @_pre_methods data, context, (err, data, context) =>
       return cb err if err
+      return cb null, null, true if context is null
 
       options = {}
       options[k] = v for own k, v of @options
@@ -130,10 +133,17 @@ class Cursor extends Emitter
   pre: (func=(data, context, next) -> next()) ->
     # for back compatibility. i.e. `(data, context, next) -> next()`
     @_pres.push (data, context, cb) ->
+
+      # If the content is null, skip the call
+      if context is null
+        cb null, null, null
+        return
+
       func data, context, (err, args...) ->
         if args.length is 0
           return cb err, data, context
         cb err, args...
+
     return @
 
   post: (func=(val, next) -> next(null, val)) ->
