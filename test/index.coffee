@@ -564,7 +564,7 @@ describe 'track cursor', ->
     cursor
       .pre (data, context, next) ->
         updateCount++
-        if updateCount is 3
+        if updateCount is 2
           next() # by default, next(null, data, context)
         else
           next null, data, null
@@ -581,6 +581,5 @@ describe 'track cursor', ->
 
     cursor.update {}
     cursor.update {}, null # context is null
-    cursor.update {}
     cursor.update {}
 
