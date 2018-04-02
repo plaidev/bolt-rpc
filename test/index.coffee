@@ -583,7 +583,7 @@ describe 'track cursor', ->
     cursor.update {}, null # context is null
     cursor.update {}
 
-  it.only 'track_id check', (done) ->
+  it 'track_id check', (done) ->
 
     cursor = @clientModuleTrack.track 'test', undefined, {
       track_path: ACCEPT_ROOM
