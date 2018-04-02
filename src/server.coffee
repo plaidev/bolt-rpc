@@ -38,6 +38,8 @@ class TrackServer
 
     @_methods = {}
 
+    @_track_id = 0
+
     @init(@io, options) if @io?
 
   init: (io, options={}) ->
@@ -50,9 +52,13 @@ class TrackServer
 
       @server.set path, method
 
-  track: (track_path, context={}) ->
+  track: (track_path, context) ->
 
     return if not track_path
+
+    context = {} if not (context instanceof Object)
+
+    context.track_id ?= @_track_id++
 
     # TODO: support 'room != track_path' case?
     @server.channel.to(track_path).emit track_path + '_track', context
