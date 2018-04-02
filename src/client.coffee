@@ -180,11 +180,11 @@ class TrackCursor extends Cursor
         @update undefined, {auto_track: true, reconnect: true}
       , 0
 
-  track: (flag) ->
+  track: (flag, context=undefined) ->
     old = @tracking
     @tracking = flag
     if not old and @tracking
-      @update()
+      @update(undefined, context)
     return @
 
 
