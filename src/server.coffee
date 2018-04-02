@@ -58,7 +58,8 @@ class TrackServer
 
     context = {} if not (context instanceof Object)
 
-    context.track_id ?= @_track_id++
+    context.track_id ?= @_track_id + 1
+    @_track_id = context.track_id
 
     # TODO: support 'room != track_path' case?
     @server.channel.to(track_path).emit track_path + '_track', context
