@@ -609,28 +609,28 @@ describe 'track cursor', ->
             done()
           , 100
       .track true
-      .update {}
+      .update {} # call: undefined
 
     setTimeout () =>
-      @server.track ACCEPT_ROOM, {track_id: 1} # call
+      @server.track ACCEPT_ROOM, {track_id: 1} # call: 1
       @server.track ACCEPT_ROOM, {track_id: 1} # skip
       @server.track ACCEPT_ROOM, {track_id: 0} # skip
 
       setTimeout () =>
-        @server.track ACCEPT_ROOM, {track_id: 2} # call
+        @server.track ACCEPT_ROOM, {track_id: 2} # call: 2
         @server.track ACCEPT_ROOM, {track_id: 3} # skip
         @server.track ACCEPT_ROOM, {track_id: 5, auto_track: true} # skip, auto_track is weak reqquest.
-        @server.track ACCEPT_ROOM, {track_id: 4} # call (requested)
+        @server.track ACCEPT_ROOM, {track_id: 4} # call (requested): 4
 
         setTimeout () =>
-          @server.track ACCEPT_ROOM, {track_id: 3} # call
-          @server.track ACCEPT_ROOM # call 4
+          @server.track ACCEPT_ROOM, {track_id: 3} # call: 3
+          @server.track ACCEPT_ROOM # call: 4
 
           setTimeout () =>
             cursor.track false
-            cursor.track true, {track_id: 10} # id update and track call
-            @server.track ACCEPT_ROOM, {track_id: 9} # skip
-            @server.track ACCEPT_ROOM, {track_id: 11} # call
+            cursor.track true, {track_id: 10} # id update and track call: 10
+            @server.track ACCEPT_ROOM, {track_id: 10} # skip
+            @server.track ACCEPT_ROOM # call 11
           , 100
         , 100
       , 100
