@@ -56,7 +56,7 @@ class Cursor extends Emitter
     return @ if context is null
 
     # reject if now calling, but keep request, data and context.
-    if @calling
+    if @calling and not context.reconnect
 
       # skip if context.track_id less than @calling.track_id
       if @calling.track_id? and context.track_id? and context.track_id <= @calling.track_id
@@ -188,7 +188,7 @@ class TrackCursor extends Cursor
     @client._socket.on 'reconnect', =>
       return if not @tracking
       setTimeout () =>
-        @update undefined, {auto_track: true, reconnect: true}
+        @update undefined, {auto_track: true, reconnect: true, track_id: 0}
       , 0
 
   track: (flag, context=undefined) ->
