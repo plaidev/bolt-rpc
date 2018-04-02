@@ -20,7 +20,7 @@ class Cursor extends Emitter
 
     @val = null
     @err = null
-    @calling = false
+    @calling = null
 
     @context = null
 
@@ -58,16 +58,24 @@ class Cursor extends Emitter
     # reject if now calling, but keep request, data and context.
     if @calling
 
-      # auto_track is week request, don't update non auto_track context.
-      if context.auto_track and @context? and not @context.auto_track
+      # skip if context.track_id less than @calling.track_id
+      if @calling.track_id? and context.track_id? and context.track_id <= @calling.track_id
         return @
+
+      # auto_track is week request, don't update non auto_track context.
+      if @context?
+        if context.auto_track and not @context.auto_track
+          return @
+
+        if @context.track_id? and context.track_id? and context.track_id <= @context.track_id
+          return @
 
       # keep auto track context
       @context = context
 
       return @
 
-    @calling = true
+    @calling = context
 
     @_query_with_middlewares @data, context, (err, val, skip=false) =>
 
@@ -76,7 +84,7 @@ class Cursor extends Emitter
         @err = err or null
         @val = val or null
 
-      @calling = false
+      @calling = null
 
       if not skip
         if err
@@ -86,6 +94,9 @@ class Cursor extends Emitter
 
       # update more once if requested
       return if not @context?
+
+      # return if next request is old tracking request
+      return if @context.track_id? and context.track_id? and @context.track_id <= context.track_id
 
       context = @context
       @context = null
