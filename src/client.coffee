@@ -188,7 +188,7 @@ class TrackCursor extends Cursor
     @client._socket.on 'reconnect', =>
       return if not @tracking
       setTimeout () =>
-        @update undefined, {auto_track: true, reconnect: true, track_id: 0}
+        @update undefined, {auto_track: true, reconnect: true, track_id: -1}
       , 0
 
   track: (flag, context=undefined) ->
