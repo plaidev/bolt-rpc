@@ -590,7 +590,7 @@ describe 'track cursor', ->
     }
 
     called = 0
-    track_ids = [undefined, 1, 2, 4, 3, 4]
+    track_ids = [undefined, 1, 2, 4, 3, 4, 10, 11]
 
     cursor
       .pre (data, context, next) ->
@@ -602,8 +602,8 @@ describe 'track cursor', ->
       .end ({success}) ->
         assert success
         called++
-        assert called <= 6
-        if called is 6
+        assert called <= 8
+        if called is 8
           cursor.track false
           setTimeout ->
             done()
@@ -623,11 +623,14 @@ describe 'track cursor', ->
         @server.track ACCEPT_ROOM, {track_id: 4} # call (requested)
 
         setTimeout () =>
-          cursor.track true, {track_id: 0} # call
+          @server.track ACCEPT_ROOM, {track_id: 3} # call
+          @server.track ACCEPT_ROOM # call 4
 
           setTimeout () =>
-            @server.track ACCEPT_ROOM, {track_id: 3} # call
-            @server.track ACCEPT_ROOM # call 4
+            cursor.track false
+            cursor.track true, {track_id: 10} # id update and track call
+            @server.track ACCEPT_ROOM, {track_id: 9} # skip
+            @server.track ACCEPT_ROOM, {track_id: 11} # call
           , 100
         , 100
       , 100
