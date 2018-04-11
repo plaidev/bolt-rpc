@@ -55,6 +55,7 @@
     function TrackServer(io, options) {
       this.io = io;
       this._methods = {};
+      this._track_id = 0;
       if (this.io != null) {
         this.init(this.io, options);
       }
@@ -79,12 +80,16 @@
     };
 
     TrackServer.prototype.track = function(track_path, context) {
-      if (context == null) {
-        context = {};
-      }
       if (!track_path) {
         return;
       }
+      if (!(context instanceof Object)) {
+        context = {};
+      }
+      if (context.track_id == null) {
+        context.track_id = this._track_id + 1;
+      }
+      this._track_id = context.track_id;
       this.server.channel.to(track_path).emit(track_path + '_track', context);
     };
 

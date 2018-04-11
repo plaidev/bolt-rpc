@@ -39,7 +39,7 @@
       this.options = options;
       this.val = null;
       this.err = null;
-      this.calling = false;
+      this.calling = null;
       this.context = null;
       this._pres = [];
       this._mdls = [];
@@ -80,14 +80,22 @@
       if (context === null) {
         return this;
       }
-      if (this.calling) {
-        if (context.auto_track && (this.context != null) && !this.context.auto_track) {
+      if (this.calling && !context.reconnect) {
+        if ((this.calling.track_id != null) && (context.track_id != null) && context.track_id <= this.calling.track_id) {
           return this;
+        }
+        if (this.context != null) {
+          if (context.auto_track && !this.context.auto_track) {
+            return this;
+          }
+          if ((this.context.track_id != null) && (context.track_id != null) && context.track_id <= this.context.track_id) {
+            return this;
+          }
         }
         this.context = context;
         return this;
       }
-      this.calling = true;
+      this.calling = context;
       this._query_with_middlewares(this.data, context, (function(_this) {
         return function(err, val, skip) {
           if (skip == null) {
@@ -97,7 +105,7 @@
             _this.err = err || null;
             _this.val = val || null;
           }
-          _this.calling = false;
+          _this.calling = null;
           if (!skip) {
             if (err) {
               _this.emit('error', err);
@@ -106,6 +114,9 @@
             }
           }
           if (_this.context == null) {
+            return;
+          }
+          if ((_this.context.track_id != null) && (context.track_id != null) && _this.context.track_id <= context.track_id) {
             return;
           }
           context = _this.context;
@@ -253,19 +264,23 @@
           return setTimeout(function() {
             return _this.update(void 0, {
               auto_track: true,
-              reconnect: true
+              reconnect: true,
+              track_id: -1
             });
           }, 0);
         };
       })(this));
     }
 
-    TrackCursor.prototype.track = function(flag) {
+    TrackCursor.prototype.track = function(flag, context) {
       var old;
+      if (context == null) {
+        context = void 0;
+      }
       old = this.tracking;
       this.tracking = flag;
       if (!old && this.tracking) {
-        this.update();
+        this.update(void 0, context);
       }
       return this;
     };
