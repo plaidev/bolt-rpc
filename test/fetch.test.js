@@ -50,16 +50,31 @@ describe('Promise API', function() {
     return done();
   });
 
+  it('sendOnce', (done) => {
+
+    const client = this.client;
+
+    client.sendOnce('heavyTask', {call: 1}, (err, data) => {
+      assert(err.message, 'CancelledBySameMethod')
+    });
+
+    setTimeout(() => {
+      client.sendOnce('heavyTask', {call: 2}, (err, data) => {
+        assert(data.call, 2);
+        done();
+      });
+    }, 100);
+
+  });
+
   it('fetch', async () => {
     const client = this.client;
-    let callCount = 0;
     const val = await client.fetch('heavyTask', {call: 1});
     assert(val.call, 1);
   });
 
   it('fetchOnce', async () => {
     const client = this.client;
-    let callCount = 0;
 
     const callFetch1 = async () => {
       await timeout(100);

@@ -733,6 +733,5 @@ describe('after', function() {
     io.close();
     app.emit('close');
     done();
-    process.exit();
   });
 });
