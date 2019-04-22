@@ -1,16 +1,13 @@
 {
   "name": "bolt-rpc",
   "version": "1.2.3",
-  "description": "rpc module has middleware system like express.js",
+  "description": "rpc module with expressjs like middleware system",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --reporter spec --compilers coffee:coffee-script/register",
-    "server": "coffee example/stack/server.coffee",
-    "client": "coffee example/stack/client.coffee",
-    "vue-server": "nodemon -e coffee example/vue/server.coffee",
-    "make": "browserify -t coffeeify -r ./index:bolt-rpc --extension=\".coffee\" index.js > build/build.js",
-    "build": "grunt && make build && make install && npm run make",
-    "prebuild": "make clean && make components"
+    "test": "mocha",
+    "server": "node example/stack/server.js",
+    "client": "node example/stack/client.js",
+    "vue-server": "nodemon example/vue/server.js"
   },
   "repository": {
     "type": "git",
@@ -27,25 +24,15 @@
   },
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
-    "async": "0.9.0",
-    "component-emitter": "1.2.0",
-    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#v1.3.2",
+    "async": "2.6.2",
+    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#feature/webpack",
     "shallow-copy": "0.0.1"
   },
   "devDependencies": {
-    "browserify": "13.0.0",
-    "coffee-script": "1.8.0",
-    "coffeeify": "2.0.1",
-    "component": "0.19.9",
-    "grunt": "0.4.5",
-    "grunt-cli": "0.1.13",
-    "grunt-contrib-coffee": "0.12.0",
-    "grunt-contrib-watch": "0.6.1",
-    "grunt-shell": "1.1.1",
-    "lodash": "2.4.1",
-    "mocha": "2.2.5",
+    "lodash": "4.17.11",
     "sinon": "1.11.1",
-    "socket.io": "1.2.0",
-    "socket.io-client": "1.2.0"
+    "mocha": "6.1.4",
+    "socket.io": "2.2.0",
+    "socket.io-client": "2.2.0"
   }
 }
