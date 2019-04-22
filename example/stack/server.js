@@ -27,7 +27,16 @@ server.use('add'
 
 server.use('add'
   , function(req, res, next) {
-    const { a } = req.data;
-    const { b } = req.data;
-    return res.send(a + b);
+    setTimeout(() => {
+      const { a, b } = req.data;
+      return res.send(a + b);
+    }, 100);
+});
+
+server.track('addTrack'
+  , function(req, res, next) {
+    setTimeout(() => {
+      const { a, b } = req.data;
+      return res.send(a + b);
+    }, 100);
 });
