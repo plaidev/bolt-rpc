@@ -11,10 +11,6 @@ Performance Comparison: https://github.com/nashibao/node-rpc-test
 
     $ npm install bolt-rpc
 
-  Install with [component(1)](http://component.io):
-
-    $ component install plaidev/bolt-rpc
-
 ## API
 
 ### server example
