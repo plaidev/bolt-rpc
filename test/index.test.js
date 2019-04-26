@@ -226,7 +226,6 @@ describe('Promise API', function() {
   });
 });
 
-
 describe('simple track cursor,', function() {
 
   const _auto_track_middleware = name =>
@@ -531,7 +530,6 @@ describe('advanced', function() {
   });
 });
 
-
 describe('track cursor', function() {
 
   const NS = 'track_auth';
@@ -556,7 +554,7 @@ describe('track cursor', function() {
     this.server.use('test_with_auto_track', function(req, res, next) {
       req.end(() => res.track(ACCEPT_ROOM));
       return res.json({success: true});
-  });
+    });
 
     this.clientModuleTrack = new Client(io_for_client, {
       name_space: NS,
@@ -586,7 +584,7 @@ describe('track cursor', function() {
           , 100);
         }}).track(true)
       .update({});
-});
+  });
 
   it('cannot join reject room', function(done) {
 
@@ -671,7 +669,7 @@ describe('track cursor', function() {
     cursor.update({});
     cursor.update({}, null); // context is null
     return cursor.update({});
-});
+  });
 
   return it('track_id check', function(done) {
 
@@ -726,5 +724,14 @@ describe('track cursor', function() {
       , 100);
     }
     , 100);
+  });
+});
+
+describe('after', function() {
+  it('close', function(done) {
+    app.close();
+    io.close();
+    app.emit('close');
+    done();
   });
 });
