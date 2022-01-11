@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/plaidev/bolt-rpc"
+    "url": "https://github.com/plaidev/bolt-rpc"
   },
   "keywords": [
     "rpc",
@@ -25,7 +25,7 @@
   "homepage": "https://github.com/plaidev/bolt-rpc",
   "dependencies": {
     "async": "2.6.2",
-    "minimum-rpc": "git://github.com/plaidev/minimum-rpc.git#feature/decaffe",
+    "minimum-rpc": "https://github.com/plaidev/minimum-rpc.git#feature/decaffe",
     "shallow-copy": "0.0.1"
   },
   "devDependencies": {
